@@ -15,8 +15,6 @@ class Simulation():
                 x.applyBoatPosition(userCellInput,endBoatPoint, count = 0)
                 print(x.gameBoard)
 
-                
-
 class Board:
     def __init__(self):
         self.emptySpot = 0
@@ -35,10 +33,10 @@ class Board:
         "Patrol Boat":2
         }
         self.orientationOptions = {
-            '1':[0,1],          
-            '2':[1,0],
-            '3':[0,-1],
-            '4':[-1,0],
+            '1':[1,0],          
+            '2':[0,1],
+            '3':[-1,0],
+            '4':[0,-1],
             '5':[0,0] 
         }
     
@@ -135,15 +133,28 @@ class Board:
     def applyBoatPosition(self,uCell,endCell,count):
         adjBoatPos = self.translateUserCell(uCell)
         if adjBoatPos[count] != endCell[count]:
-            boardCoords = [x for x in adjBoatPos] 
-            direction = self.findBoatDirection(adjBoatPos[count],endCell[count])
-            for x in range(adjBoatPos[count],endCell[count]+direction,direction):
-                boardCoords[count] = x
-                self.gameBoard[boardCoords] = 1
+            boardCoord = [x for x in adjBoatPos] 
+            allBoatCoords = self.getBoatCoords(boardCoord,adjBoatPos,endCell,count)
+            for x in allBoatCoords:
+                self.gameBoard[tuple(x)] = 1
         else:
             count += 1 
             self.applyBoatPosition(uCell,endCell,count)
 
+#getBoatCoords returns a LIST of all the points that will be placed on the game board as part of a single boat 
+    def getBoatCoords(self,boatCoord,adjBoatPos,endCell,count):
+        allBoatCoords = []
+        direction = self.findBoatDirection(adjBoatPos[count],endCell[count])
+        for x in range(adjBoatPos[count],endCell[count]+direction,direction):
+            boatCoord[count] = x
+            allBoatCoords.append(boatCoord[:])
+            print(allBoatCoords)
+        return allBoatCoords
+    
+#findBoatDirection takes a certain axis of the game board from the start/end cells and checks to see how the boat will be placed (in descending/ascending order)
+#   uCellDim - starting cell dimension input by user (int)
+#   endCellDim - ending cell dimension input by user (int)
+#   return direction - gives positive direction (+1) or negative direction (-1) that will dictate how the boat gets placed on the board (int)
     def findBoatDirection(self,uCellDim,endCellDim):
         if endCellDim >= uCellDim:
             direction = 1
@@ -151,16 +162,12 @@ class Board:
             direction = -1
         return direction
 
-    def checkIntersection():
+    def checkIntersection(boardCoords):
         pass
 
 
 myBoard1 = Board()
 myBoard2 = Board()
-# testList = [myBoard1,myBoard2]
-# print(testList)
-# for x in testList:
-#     print(myBoard1.shipHit)
 
 testGame = Simulation(myBoard1,myBoard2)
 testGame.runBoardSetupSteps()
@@ -168,7 +175,7 @@ testGame.runBoardSetupSteps()
 
 #To do:
 #   - build in functionality during ship position application to re-pick the cell position if desired 
-#   - build placeBoats method
+#   - build placeBoats method - currently it is throwing in random 1s everywhere on the board
 #       -actually, nontrivial process to have position be placed based on initial and final positions
 #       - current recommendation: build in if statement to apply a positive or negative step to a range; then added position markers with this range that gets created
 #   - current user input filtering will flag if a user puts a space between characters selected; might be worth having a method that allows spaces 
