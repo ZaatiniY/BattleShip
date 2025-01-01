@@ -14,6 +14,7 @@ class Simulation():
             for key, value in x.ships.items():
                 userCellInput = x.userBoatPosPrompt(key,value)
                 endBoatPoint = x.specifyBoatOrientation(userCellInput,key,value)
+                print(f"this is the end point being passed to applyBoatPosition {endBoatPoint}")
                 x.applyBoatPosition(key,value,userCellInput,endBoatPoint, count = 0)
 
 
@@ -57,10 +58,9 @@ class Board:
         print("Please select location for boat placement (must be in format XY\n -where X is letter A-J\n -where Y is number 0-9")
         print("You will be guided to set direction of your boat - this will mean that all positions for the current boat will be in the direction you selected")
         boatStartPoint = str(input(f"Starting cell for {boat} (boat length {boatLength})")).upper()
-        if self.checkBoatPositionInput(boatStartPoint):
-            return boatStartPoint 
-        else:
-            self.userBoatPosPrompt(boat,boatLength)
+        if not self.checkBoatPositionInput(boatStartPoint):
+            boatStartPoint = self.userBoatPosPrompt(boat,boatLength)
+        return boatStartPoint
 
 #checkValidPosition has 3 goals:
 #1)Check proper length of user input for a cell position (2 characters)
@@ -92,11 +92,14 @@ class Board:
 #   boat -> name of the boat that is being placed (string)
 #   boatlength -> length of the boat that is being placed (int)
     def specifyBoatOrientation(self, selectedCell, boat, boatLength):
-        print("Select the direction you will place your boat (if the boat is found to go over the edge of the board, you will be asked to redo the input)")
+        #print("Select the direction you will place your boat (if the boat is found to go over the edge of the board, you will be asked to redo the input)")
         orientationSelect = self.promptOrientationSelect(selectedCell)
-        print(f"\n\n This is your check to see why your option isn't being selected:\n user input {orientationSelect}\n type {type(orientationSelect)}\n \n \n") #testing user orientation input
+        #print(f"\n\n This is your check to see why your option isn't being selected:\n user input {orientationSelect}\n type {type(orientationSelect)}\n \n \n") #testing user orientation input
+        print(f"This is the user input for orientation that's going into the checkValidPosition Input AND checkBoatOrientation ===> {orientationSelect}")
         self.checkValidPositionInput(selectedCell,boat,boatLength,orientationSelect) 
-        return self.checkBoatOrientation(selectedCell,boat,boatLength,orientationSelect)
+        endCellCheck = self.checkBoatOrientation(selectedCell,boat,boatLength,orientationSelect)
+        print(f"this is the position that is being DEFINITEVLY returned to the Simulation object ===> {endCellCheck}")
+        return endCellCheck
 
 
     def promptOrientationSelect(self,selectedCell):
@@ -121,7 +124,7 @@ class Board:
         print(f"\n this is your check that the correct orientation vector is being applied to your boat direction - {self.orientationOptions[uBoatOrientation]}\n"
         f"orientation select - {uBoatOrientation}\n" f"boat position, XY format {adjBoatPos}\n")
         PosFinal = [self.orientationOptions[uBoatOrientation][0]*(boatLength-1)+adjBoatPos[0],self.orientationOptions[uBoatOrientation][1]*(boatLength-1)+adjBoatPos[1]]
-        print(f"final playing position {PosFinal}")
+        print(f"final playing position being captured in checkBoatOrientation ===> {PosFinal}\n\n")
         #This is a stupid loop; you're checking both dimensions of the array, even if the first one fails
         for x in PosFinal:
             if x < 0 or x > len(self.gameBoard)-1:
@@ -129,7 +132,8 @@ class Board:
         if redoInput:
             print("It seems like the orientation you tried to specify for your boat is not valid as it doesn't lie in the playing field; \n"
             "please try again or consider selecting a new starting position for your boat")
-            self.specifyBoatOrientation(selectedCell,boat,boatLength)
+            PosFinal = self.specifyBoatOrientation(selectedCell,boat,boatLength) #changing this to PosFinal = ... made the code actually work - still need to understand why that is 
+        
         return PosFinal
             
 
