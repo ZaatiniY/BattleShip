@@ -11,7 +11,9 @@ class Simulation():
         for x in self.players:
             for key, value in x.ships.items():
                 userCellInput = x.userBoatPosPrompt(key,value)
-                x.specifyBoatOrientation(userCellInput,key,value)
+                endBoatPoint = x.specifyBoatOrientation(userCellInput,key,value)
+                x.applyBoatPosition(userCellInput,endBoatPoint, count = 0)
+                print(x.gameBoard)
 
                 
 
@@ -74,7 +76,7 @@ class Board:
             continueSelection = True 
         return continueSelection
 
-#translateUserCell takes User Input and returns it as a tuple of (X,Y coordinates1)
+#translateUserCell takes User Input and returns it as a tuple of (X,Y) coordinates
     def translateUserCell(self,uInput):
         return (self.boardRows.index(uInput[0]),int(uInput[1]))
         
@@ -94,12 +96,13 @@ class Board:
         )
         print(f"\n\n This is your check to see why your option isn't being selected:\n user input {orientationSelect}\n type {type(orientationSelect)}\n \n \n")
         self.checkValidPositionInput(selectedCell,boat,boatLength,orientationSelect) 
-        boatPosEnd = self.checkBoatOrientation(selectedCell,boat,boatLength,orientationSelect)
+        return self.checkBoatOrientation(selectedCell,boat,boatLength,orientationSelect)
 
 #checkBoatOrientation will check to see if the direction that the player has input is valid for a particular boat's orientation 
 #   selectedCell - user input of starting cell for particular boat (string)
 #   boatLength - length of boat being positioned (int)
 #   uBoatOrientation - direction that boat will be positioned per user input (int)
+#   return PosFinal -> tuple of X,Y coordinate showing end point of boat getting placed on playing grid
 #   Notes - maybe worth exploring splitting up this method??? Kinda big and does a lot 
     def checkBoatOrientation(self,selectedCell,boat, boatLength,uBoatOrientation):
         adjBoatPos = self.translateUserCell(selectedCell)
@@ -128,18 +131,20 @@ class Board:
             print("The input you have given for a boat orientation is not a valid option; please try again")
             self.specifyBoatOrientation(selectedCell, boat, boatLength)
 
-#applyBoatOrientation places the boats on the playing board as specified by the player starting cell and the range of cells specified by user input for boat orientation
-#   notes: this is stupid using if/else statement given that there's only 2 options; trying to figure out a way to make more concise 
-    def applyBoatOrientation(self,uCell, endCell):
-        uCellAdj = self.translateUserCell(uCell)
-        if uCell[0] != endCell[0]:
-            direction = self.applyBoatDirection(uCell[0]-endCell[0])
-            
+#applyBoatPosition places the boats on the playing board as specified by the player starting cell and the range of cells specified by user input for boat orientation
+    def applyBoatPosition(self,uCell,endCell,count):
+        adjBoatPos = self.translateUserCell(uCell)
+        if adjBoatPos[count] != endCell[count]:
+            boardCoords = [x for x in adjBoatPos] 
+            direction = self.findBoatDirection(adjBoatPos[count],endCell[count])
+            for x in range(adjBoatPos[count],endCell[count]+direction,direction):
+                boardCoords[count] = x
+                self.gameBoard[boardCoords] = 1
         else:
-            direction = self.applyBoatDirection(uCell[1]-endCell[1])
+            count += 1 
+            self.applyBoatPosition(uCell,endCell,count)
 
-
-    def applyBoatDirection(self,uCellDim,endCellDim):
+    def findBoatDirection(self,uCellDim,endCellDim):
         if endCellDim >= uCellDim:
             direction = 1
         else:
@@ -148,10 +153,6 @@ class Board:
 
     def checkIntersection():
         pass
-
-
-
-        
 
 
 myBoard1 = Board()
