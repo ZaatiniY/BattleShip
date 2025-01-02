@@ -91,17 +91,24 @@ class Board:
 #   selectedCell -> Cell that player has already input during game running for where the boat will originally be placed
 #   boat -> name of the boat that is being placed (string)
 #   boatlength -> length of the boat that is being placed (int)
+#   Notes: This is a difficult one; the if statement checking for '5' can't seem to be it's own function since it would need to return the selectedCell AND endCellCheck
+#       Recommendation - tie checkValidPositionInput into promptOrientationSelect so it can all be handeled in one method call in specifyBoatOrientation
     def specifyBoatOrientation(self, selectedCell, boat, boatLength):
         #print("Select the direction you will place your boat (if the boat is found to go over the edge of the board, you will be asked to redo the input)")
         orientationSelect = self.promptOrientationSelect(selectedCell)
         #print(f"\n\n This is your check to see why your option isn't being selected:\n user input {orientationSelect}\n type {type(orientationSelect)}\n \n \n") #testing user orientation input
         print(f"This is the user input for orientation that's going into the checkValidPosition Input AND checkBoatOrientation ===> {orientationSelect}")
-        self.checkValidPositionInput(selectedCell,boat,boatLength,orientationSelect) 
-        endCellCheck = self.checkBoatOrientation(selectedCell,boat,boatLength,orientationSelect)
-        print(f"this is the position that is being DEFINITEVLY returned to the Simulation object ===> {endCellCheck}")
+        if orientationSelect == '5':
+            print("Please make your new selection for the starting point of your boat")
+            selectedCell = self.userBoatPosPrompt(boat,boatLength)
+            endCellCheck = self.specifyBoatOrientation(selectedCell,boat,boatLength)
+        else:
+            orientationSelect = self.checkValidPositionInput(selectedCell,boat,boatLength,orientationSelect) 
+            endCellCheck = self.checkBoatOrientation(selectedCell,boat,boatLength,orientationSelect)
+        #print(f"this is the position that is being DEFINITEVLY returned to the Simulation object ===> {endCellCheck}")
         return endCellCheck
 
-
+#Notes: Put promptOrientationSelect such that it returns orientationChoice if the check comes out bad
     def promptOrientationSelect(self,selectedCell):
         orientationChoice = input(f"Cell Selection {selectedCell}\n"
             "1) Up from selected cell\n"
@@ -136,7 +143,6 @@ class Board:
         
         return PosFinal
             
-
 #checkValidPositionInput will check the user's selection for orientation of their current boat; if the option isn't valid, it will prompt the user to give their position input again
 #   selectedCell -> selectedCell is the user's starting boat position option
 #   FUTURE WORK - have to check that user input is even a number; right now a string will cause an issue
@@ -144,11 +150,9 @@ class Board:
     def checkValidPositionInput(self,selectedCell, boat, boatLength, uBoatOrientation):
         if uBoatOrientation not in self.orientationOptions or len(uBoatOrientation) != 1:
             print("The input you have given for a boat orientation is not a valid option; please try again")
-            self.specifyBoatOrientation(selectedCell, boat, boatLength)
-        elif uBoatOrientation == '5': #this is uber stupid; need a cleaner way to call out the option was selected to repick the start cell. Just seeing a '5' is clean
-            print("you've selected to repick your boat's starting position; please see below prompt to choose boat's position")
-            uCell = self.userBoatPosPrompt(boat,boatLength)
-
+            uBoatOrientation = self.promptOrientationSelect(selectedCell)
+            uBoatOrientation = self.checkValidPositionInput(self,selectedCell,boat,boatLength,uBoatOrientation)
+        return uBoatOrientation
 
 #applyBoatPosition places the boats on the playing board as specified by the player starting cell and the range of cells specified by user input for boat orientation
     def applyBoatPosition(self,boat,boatLength,uCell,endCell,count):
@@ -197,7 +201,6 @@ class Board:
     def intersectMessage():
         print("It seems like you've placed a boat such that it overlaps with an existing boat on the board; please start again and try picking a new position for this current boat:")
                 
-                
 
 
 myBoard1 = Board()
@@ -212,4 +215,6 @@ testGame.runBoardSetupSteps()
 #   - current user input filtering will flag if a user puts a space between characters selected; might be worth having a method that allows spaces 
 #   - test intersection detecting capabilities 
 
-#   RECURSION in checkValidPositionInput will NOT work properly because no value is being returned to the function
+#   checkValidPositionInput is SO dumb right now -should make the prompt for position input it's own function so that you can call it more easily
+#       - since it's tied to specifyBoatOrientation it makes it difficult to recursively correct 
+
