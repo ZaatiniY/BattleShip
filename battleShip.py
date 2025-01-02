@@ -140,6 +140,7 @@ class Board:
 #checkValidPositionInput will check the user's selection for orientation of their current boat; if the option isn't valid, it will prompt the user to give their position input again
 #   selectedCell -> selectedCell is the user's starting boat position option
 #   FUTURE WORK - have to check that user input is even a number; right now a string will cause an issue
+#   More pressing future work >>>> you can't do everything in this function; need to split functionality of checking for a '5' input vs a VALID input option
     def checkValidPositionInput(self,selectedCell, boat, boatLength, uBoatOrientation):
         if uBoatOrientation not in self.orientationOptions or len(uBoatOrientation) != 1:
             print("The input you have given for a boat orientation is not a valid option; please try again")
@@ -210,3 +211,5 @@ testGame.runBoardSetupSteps()
 #   - build in functionality during ship position application to re-pick the cell position if desired 
 #   - current user input filtering will flag if a user puts a space between characters selected; might be worth having a method that allows spaces 
 #   - test intersection detecting capabilities 
+
+#   RECURSION in checkValidPositionInput will NOT work properly because no value is being returned to the function
