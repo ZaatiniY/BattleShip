@@ -8,7 +8,7 @@ class Simulation():
 
     
 #Note - currently refabbing to make all these functions get called within other Board object methods
-    def runBoardSetupSteps(self):
+    def runBoardBuilding(self):
         print(self.players)
         for x in self.players:
             for key, value in x.ships.items():
@@ -17,16 +17,36 @@ class Simulation():
                 print(f"this is the end point being passed to applyBoatPosition {endBoatPoint}")
                 x.applyBoatPosition(key,value,userCellInput,endBoatPoint, count = 0)
 
+
+#playerTurn defines the ATTACKING player
+#TO-DO:
+#   - remove/finalize display visuals
+    def cycleTurns(self,playerTurn):
+        if self.clock ==0:
+            self.startTurnsMessage()
+        winCheck = False
+        while not winCheck:
+            userSelect = self.promptPlayerAttack(playerTurn)
+            self.processTarg(userSelect,playerTurn)
+            playerTurn = self.switchPlayer(playerTurn)
+            winCheck = self.checkWinState(playerTurn,boatCount = 0, positionCount=0)
+            self.clock += 1 #this is really stupid to have continuously adding just for the first turn to not trigger start message; consider better way of managing
+            self.endTurnDisplay(playerTurn)
+    
+    def endTurnDisplay(self,playerTurn):
+        print("This is the current state of the OPPOSING player's field (the one that just got SHOT AT)")
+        print(self.players[self.switchPlayer(playerTurn)].gameBoard)
+
+
     def promptPlayerAttack(self,turn):
-        chosenCell = input(f"Player {turn} - Select the cell you want to hit. Your selection must be in the format of :")
+        chosenCell = input(f"Player {turn+1} - Select the cell you want to hit. Your selection must be in the format of a '[Letter][Number]'") #The plus 1 here is necessary, as the index for the list is zero and 1; players are 1 and 2
         if not self.checkTargetInput(chosenCell,turn):
             chosenCell = self.promptPlayerAttack(turn)
         return chosenCell
 
-
-    def processTarg(self,selectCell,turn):
+    def processTarg(self,selectCell,turn): 
         successfulTurn = False #successful turn only counts if a turn doesn't need to be repeated because someone has selected a cell that already has been targeted before
-        playerTarg = self.players[1-turn]
+        playerTarg = self.players[self.switchPlayer(turn)]
         matrixCell = self.translateUserTarg(selectCell) #where target is in format that can be passed to np matrix
         if playerTarg.gameBoard[tuple(matrixCell)] == playerTarg.emptySpot:
             print("You've missed the target")
@@ -46,7 +66,7 @@ class Simulation():
 
 
     def translateUserTarg(self,uInput):
-        return (self.boardRows.index(uInput[0]),int(uInput[1]))
+        return (self.players[0].boardRows.index(uInput[0]),int(uInput[1]))
 
 
     def checkTargetInput(self,uInput,turn):
@@ -63,17 +83,68 @@ class Simulation():
         return continueSelection
 
 #this can be optimizaed to stop after it finds a single surviving boat cell
-    def checkWinState(self,turn):
-        win = True  
-        for key,value in self.players[turn].storedPositions:
-            for x in value:
-                if self.players[turn].gameBoard[tuple(x)] == self.players[turn].shipSafe:
+    def checkWinState(self,turn,boatCount,positionCount):
+        win = True 
+        boatItems = iter(self.players[turn].storedPositions.items())
+        while boatCount < len(self.players[turn].storedPositions) and win ==True:
+            key,currBoatPos = next(boatItems)
+            while positionCount < len(currBoatPos) and win == True:
+                if self.players[turn].gameBoard[tuple(currBoatPos[positionCount])] == self.players[turn].shipSafe:
                     win = False
+                else: #This else portion is added to just track how the function is running; should be removed after game is finalized/tested
+                    print("Game has not been won by current player - play will continue") 
+                positionCount += 1
+            boatCount +=1
         return win
     
     def informGameEnd(gameCheck,turn):
         if gameCheck:
             print(f"The game is over - Player {turn} has won!!! Thank you for playing")
+
+    def switchPlayer(self,turn):
+        return abs(1-turn)
+
+    def startTurnsMessage(self):
+        print("All boats have been placed - this is the start of the turns; Player 1 will be first for selecting cells")
+
+    def playGameTest(self):
+        #self.runBoardBuilding()
+        self.testBoardBuilding()
+        # print(self.players[0].gameBoard)
+        # print(self.players[0].storedPositions)
+        self.cycleTurns(playerTurn=0)
+
+
+#defineTestBoards will set the game board for battle ship with predetermined game board; makes it easier than playing through the first part of the game every time 
+    def defineTestBoards(self):
+        player1TestBoats = {
+        "Carrier":[[0,5],[1,5],[2,5],[3,5],[4,5]],
+        "Battle Ship":[[1,4],[2,4],[3,4],[4,4]],
+        "Destroyer":[[1,3],[2,3],[3,3]],
+        "Submarine":[[1,2],[2,2],[3,2]],
+        "Patrol Boat":[[1,1],[2,1]]
+        }
+
+        player2TestBoats = {
+        "Carrier":[[9,5],[8,5],[7,5],[6,5],[5,5]],
+        "Battle Ship":[[9,4],[8,4],[7,4],[6,4]],
+        "Destroyer":[[9,3],[8,3],[7,3]],
+        "Submarine":[[9,2],[8,2],[7,2]],
+        "Patrol Boat":[[9,1],[9,1]]
+        }
+        self.players[0].storedPositions = player1TestBoats
+        self.players[1].storedPositions = player2TestBoats
+        return 
+
+    def drawTestBoards(self):
+        for x in self.players:
+            for key,value in x.storedPositions.items():
+                for y in value:
+                    x.gameBoard[tuple(y)] = x.shipSafe
+
+    def testBoardBuilding(self):
+        self.defineTestBoards()
+        self.drawTestBoards()
 
 class Board:
     def __init__(self):
@@ -277,7 +348,8 @@ myBoard1 = Board()
 myBoard2 = Board()
 
 testGame = Simulation(myBoard1,myBoard2)
-testGame.runBoardSetupSteps()
+testGame.playGameTest()
+
 
 
 #To do:
