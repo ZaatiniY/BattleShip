@@ -5,8 +5,8 @@ class Simulation():
     def __init__(self,player1Board, player2Board):
         self.players = [player1Board,player2Board]
         self.clock = 0
-    
 
+    
 #Note - currently refabbing to make all these functions get called within other Board object methods
     def runBoardSetupSteps(self):
         print(self.players)
@@ -17,6 +17,63 @@ class Simulation():
                 print(f"this is the end point being passed to applyBoatPosition {endBoatPoint}")
                 x.applyBoatPosition(key,value,userCellInput,endBoatPoint, count = 0)
 
+    def promptPlayerAttack(self,turn):
+        chosenCell = input(f"Player {turn} - Select the cell you want to hit. Your selection must be in the format of :")
+        if not self.checkTargetInput(chosenCell,turn):
+            chosenCell = self.promptPlayerAttack(turn)
+        return chosenCell
+
+
+    def processTarg(self,selectCell,turn):
+        successfulTurn = False #successful turn only counts if a turn doesn't need to be repeated because someone has selected a cell that already has been targeted before
+        playerTarg = self.players[1-turn]
+        matrixCell = self.translateUserTarg(selectCell) #where target is in format that can be passed to np matrix
+        if playerTarg.gameBoard[tuple(matrixCell)] == playerTarg.emptySpot:
+            print("You've missed the target")
+            playerTarg.gameBoard[tuple(matrixCell)] = playerTarg.emptySpotHit
+            successfulTurn = True
+        elif playerTarg.gameBoard[tuple(matrixCell)] == playerTarg.shipSafe:
+            print("You've HIT a target")
+            playerTarg.gameBoard[tuple(matrixCell)] = playerTarg.shipHit
+            successfulTurn = True
+        elif playerTarg.gameBoard[tuple(matrixCell)] == playerTarg.shipHit:
+            print("This is already a spot where you've scored a hit - please try again:")
+        elif playerTarg.gameBoard[tuple(matrixCell)] == playerTarg.emptySpotHit:
+            print("You've already missed here before - please try selecting again")
+        if not successfulTurn:
+            selectCell = self.promptPlayerAttack(turn)
+            self.processTarg(selectCell)
+
+
+    def translateUserTarg(self,uInput):
+        return (self.boardRows.index(uInput[0]),int(uInput[1]))
+
+
+    def checkTargetInput(self,uInput,turn):
+        inputCheck = list(uInput.upper())
+        continueSelection = False
+        if len(inputCheck) != 2:
+            print("your input isn't in the correct 2 digit format, please try again")
+        elif inputCheck[0] not in self.players[turn].boardRows:
+            print("Your first digit is not in the proper letter format for cell rows; please try again")
+        elif inputCheck[1] not in self.players[turn].boardColumns:
+            print("your second digit reprsenting your column selection was incorrect; please try again")
+        else:
+            continueSelection = True 
+        return continueSelection
+
+#this can be optimizaed to stop after it finds a single surviving boat cell
+    def checkWinState(self,turn):
+        win = True  
+        for key,value in self.players[turn].storedPositions:
+            for x in value:
+                if self.players[turn].gameBoard[tuple(x)] == self.players[turn].shipSafe:
+                    win = False
+        return win
+    
+    def informGameEnd(gameCheck,turn):
+        if gameCheck:
+            print(f"The game is over - Player {turn} has won!!! Thank you for playing")
 
 class Board:
     def __init__(self):
@@ -25,7 +82,7 @@ class Board:
         self.shipHit = 2
         self.emptySpotHit = 3
         self.gameBoard = np.zeros((10,10))
-        self.boardRows = list("JIHGFEDCBA")
+        self.boardRows = list("ABCDEFGHIJ")
         self.boardColumns = [f'{x}' for x in range(10)]
         #self.boardColumns = [x for x in range(10)]
         self.ships = {
@@ -36,9 +93,9 @@ class Board:
         "Patrol Boat":2
         }
         self.orientationOptions = {
-            '1':[1,0],          
+            '1':[-1,0],          
             '2':[0,1],
-            '3':[-1,0],
+            '3':[1,0],
             '4':[0,-1],
             '5':[0,0] 
         }
@@ -128,10 +185,10 @@ class Board:
     def checkBoatOrientation(self,selectedCell,boat, boatLength,uBoatOrientation):
         adjBoatPos = self.translateUserCell(selectedCell)
         redoInput = False
-        print(f"\n this is your check that the correct orientation vector is being applied to your boat direction - {self.orientationOptions[uBoatOrientation]}\n"
-        f"orientation select - {uBoatOrientation}\n" f"boat position, XY format {adjBoatPos}\n")
+        #print(f"\n this is your check that the correct orientation vector is being applied to your boat direction - {self.orientationOptions[uBoatOrientation]}\n"
+        #f"orientation select - {uBoatOrientation}\n" f"boat position, XY format {adjBoatPos}\n")
         PosFinal = [self.orientationOptions[uBoatOrientation][0]*(boatLength-1)+adjBoatPos[0],self.orientationOptions[uBoatOrientation][1]*(boatLength-1)+adjBoatPos[1]]
-        print(f"final playing position being captured in checkBoatOrientation ===> {PosFinal}\n\n")
+        #print(f"final playing position being captured in checkBoatOrientation ===> {PosFinal}\n\n")
         #This is a stupid loop; you're checking both dimensions of the array, even if the first one fails
         for x in PosFinal:
             if x < 0 or x > len(self.gameBoard)-1:
@@ -151,7 +208,7 @@ class Board:
         if uBoatOrientation not in self.orientationOptions or len(uBoatOrientation) != 1:
             print("The input you have given for a boat orientation is not a valid option; please try again")
             uBoatOrientation = self.promptOrientationSelect(selectedCell)
-            uBoatOrientation = self.checkValidPositionInput(self,selectedCell,boat,boatLength,uBoatOrientation)
+            uBoatOrientation = self.checkValidPositionInput(selectedCell,boat,boatLength,uBoatOrientation)
         return uBoatOrientation
 
 #applyBoatPosition places the boats on the playing board as specified by the player starting cell and the range of cells specified by user input for boat orientation
@@ -160,10 +217,15 @@ class Board:
         if adjBoatPos[count] != endCell[count]:
             boardCoord = [x for x in adjBoatPos] 
             allBoatCoords = self.getBoatCoords(boardCoord,adjBoatPos,endCell,count)
-            self.checkIntersection(boat,boatLength,allBoatCoords)
-            for x in allBoatCoords:
-                self.gameBoard[tuple(x)] = 1
+            #print(f"these are the variables being passed to checkIntersection:\n boat - {boat}\n boatLength - {boatLength}\n Coords - {allBoatCoords}")
+            if self.checkIntersection(boat,boatLength,allBoatCoords):
+                for x in allBoatCoords:
+                    self.gameBoard[tuple(x)] = self.shipSafe
+                print(self.gameBoard) #testing if applyBoatPosition is working 
+                self.storeBoatPos(boat,allBoatCoords)
+
         else:
+            #print("If this triggers something REALLY wrong is happening lol")
             count += 1 
             self.applyBoatPosition(boat,boatLength,uCell,endCell,count)
 
@@ -174,7 +236,7 @@ class Board:
         for x in range(adjBoatPos[count],endCell[count]+direction,direction):
             boatCoord[count] = x
             allBoatCoords.append(boatCoord[:])
-            print(allBoatCoords)
+            #print(allBoatCoords)
         return allBoatCoords
     
 #findBoatDirection takes a certain axis of the game board from the start/end cells and checks to see how the boat will be placed (in descending/ascending order)
@@ -189,19 +251,27 @@ class Board:
         return direction
 
 #checkIntersection will send you back to the point where you'll need to put in a new selected position for your boat 
+#   Note - it checks all the points of potentialCoords, but really it should stop after 1 check
     def checkIntersection(self, boat, boatLength, potentialCoords):
+        #print(f"This is coords checkIntersection actually sees - {potentialCoords}")
+        intersectState = True
+        count = 0
         for x in potentialCoords:
-            if self.gameBoard[tuple(x)] == 1: 
+            if self.gameBoard[tuple(x)] == self.shipSafe and intersectState: 
+                intersectState = False
+                self.intersectMessage()
                 uCell = self.userBoatPosPrompt(boat,boatLength)
                 endCell = self.specifyBoatOrientation(uCell,boat,boatLength)
-                self.intersectMessage()
-                self.applyBoatPosition(boat,boatLength,uCell,endCell)
-    
+                self.applyBoatPosition(boat,boatLength,uCell,endCell, count=0)
+                count +=1 
+        return intersectState
 
-    def intersectMessage():
+    def intersectMessage(self):
         print("It seems like you've placed a boat such that it overlaps with an existing boat on the board; please start again and try picking a new position for this current boat:")
-                
-
+    
+    
+    def storeBoatPos(self,boat,finalBoatCoords):
+        self.storedPositions[boat] = finalBoatCoords
 
 myBoard1 = Board()
 myBoard2 = Board()
@@ -211,7 +281,8 @@ testGame.runBoardSetupSteps()
 
 
 #To do:
-#   - build in functionality during ship position application to re-pick the cell position if desired 
+#   - test functionality during ship position application to re-pick the cell position if desired 
+
 #   - current user input filtering will flag if a user puts a space between characters selected; might be worth having a method that allows spaces 
 #   - test intersection detecting capabilities 
 
