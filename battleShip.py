@@ -1,20 +1,23 @@
 import numpy as np
 import pandas as pd
+import random
 
 class Simulation():
     def __init__(self,player1Board, player2Board):
         self.players = [player1Board,player2Board]
         self.clock = 0
 
-    
-#Note - currently refabbing to make all these functions get called within other Board object methods
+    def drawBoard():
+        pass
+
+
     def runBoardBuilding(self):
         print(self.players)
         for x in self.players:
             for key, value in x.ships.items():
                 userCellInput = x.userBoatPosPrompt(key,value)
                 endBoatPoint = x.specifyBoatOrientation(userCellInput,key,value)
-                print(f"this is the end point being passed to applyBoatPosition {endBoatPoint}")
+                #print(f"this is the end point being passed to applyBoatPosition {endBoatPoint}")
                 x.applyBoatPosition(key,value,userCellInput,endBoatPoint, count = 0)
 
 
@@ -31,7 +34,7 @@ class Simulation():
             playerTurn = self.switchPlayer(playerTurn)
             winCheck = self.checkWinState(playerTurn,boatCount = 0, positionCount=0)
             self.clock += 1 #this is really stupid to have continuously adding just for the first turn to not trigger start message; consider better way of managing
-            self.endTurnDisplay(playerTurn)
+            self.endTurnDisplay(self.switchPlayer(playerTurn))
     
     def endTurnDisplay(self,playerTurn):
         print("This is the current state of the OPPOSING player's field (the one that just got SHOT AT)")
@@ -47,6 +50,7 @@ class Simulation():
     def processTarg(self,selectCell,turn): 
         successfulTurn = False #successful turn only counts if a turn doesn't need to be repeated because someone has selected a cell that already has been targeted before
         playerTarg = self.players[self.switchPlayer(turn)]
+        print(f"The player that is getting HIT is Player{self.switchPlayer(turn)+1}")
         matrixCell = self.translateUserTarg(selectCell) #where target is in format that can be passed to np matrix
         if playerTarg.gameBoard[tuple(matrixCell)] == playerTarg.emptySpot:
             print("You've missed the target")
@@ -109,6 +113,7 @@ class Simulation():
 
     def playGameTest(self):
         #self.runBoardBuilding()
+        print(self.players[0].cpuOptions)
         self.testBoardBuilding()
         # print(self.players[0].gameBoard)
         # print(self.players[0].storedPositions)
@@ -146,8 +151,10 @@ class Simulation():
         self.defineTestBoards()
         self.drawTestBoards()
 
+
+
 class Board:
-    def __init__(self):
+    def __init__(self,cpuSelect):
         self.emptySpot = 0
         self.shipSafe = 1
         self.shipHit = 2
@@ -177,6 +184,9 @@ class Board:
         "Submarine":'',
         "Patrol Boat":''
         }
+
+        self.cpuOpponent = cpuSelect
+        self.cpuOptions = [x + y for x in self.boardRows for y in self.boardColumns]
     
 #userBoatPosPrompt(boatLength) 
 #       boatLength = int reprsenting how many cells long the boat is 
@@ -235,6 +245,15 @@ class Board:
             endCellCheck = self.checkBoatOrientation(selectedCell,boat,boatLength,orientationSelect)
         #print(f"this is the position that is being DEFINITEVLY returned to the Simulation object ===> {endCellCheck}")
         return endCellCheck
+
+    def cpuBoatPosition(self,boat,boatLength):
+        print("The CPU Opponent will now select their board layout:")
+
+        pass
+
+    def hold():
+        pass
+
 
 #Notes: Put promptOrientationSelect such that it returns orientationChoice if the check comes out bad
     def promptOrientationSelect(self,selectedCell):
@@ -344,8 +363,8 @@ class Board:
     def storeBoatPos(self,boat,finalBoatCoords):
         self.storedPositions[boat] = finalBoatCoords
 
-myBoard1 = Board()
-myBoard2 = Board()
+myBoard1 = Board(True)
+myBoard2 = Board(True)
 
 testGame = Simulation(myBoard1,myBoard2)
 testGame.playGameTest()
