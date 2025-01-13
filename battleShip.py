@@ -1,25 +1,20 @@
 import numpy as np
 import pandas as pd
 import random
+import time
 
 class Simulation():
     def __init__(self,player1Board, player2Board):
         self.players = [player1Board,player2Board]
         self.clock = 0
 
-    def drawBoard():
-        pass
-
-
     def runBoardBuilding(self):
-        print(self.players)
         for x in self.players:
             for key, value in x.ships.items():
                 userCellInput = x.userBoatPosPrompt(key,value)
                 endBoatPoint = x.specifyBoatOrientation(userCellInput,key,value)
                 #print(f"this is the end point being passed to applyBoatPosition {endBoatPoint}")
                 x.applyBoatPosition(key,value,userCellInput,endBoatPoint, count = 0)
-
 
 #playerTurn defines the ATTACKING player
 #TO-DO:
@@ -119,7 +114,6 @@ class Simulation():
         # print(self.players[0].storedPositions)
         self.cycleTurns(playerTurn=0)
 
-
 #defineTestBoards will set the game board for battle ship with predetermined game board; makes it easier than playing through the first part of the game every time 
     def defineTestBoards(self):
         player1TestBoats = {
@@ -139,7 +133,7 @@ class Simulation():
         }
         self.players[0].storedPositions = player1TestBoats
         self.players[1].storedPositions = player2TestBoats
-        return 
+         
 
     def drawTestBoards(self):
         for x in self.players:
@@ -151,7 +145,12 @@ class Simulation():
         self.defineTestBoards()
         self.drawTestBoards()
 
-
+    def testCPUBoardBuilding(self):
+        for key, value in self.players[0].ships.items():
+            self.players[0].cpuBoatPlacing(key,value)
+        print(f"see player one board:\n {self.players[0].gameBoard}")
+        print(self.players[0].storedPositions)
+        #print(f"see player two board:\n {self.players[1].gameBoard}")
 
 class Board:
     def __init__(self,cpuSelect):
@@ -187,6 +186,7 @@ class Board:
 
         self.cpuOpponent = cpuSelect
         self.cpuOptions = [x + y for x in self.boardRows for y in self.boardColumns]
+        self.cpuUsedCells = []
     
 #userBoatPosPrompt(boatLength) 
 #       boatLength = int reprsenting how many cells long the boat is 
@@ -246,15 +246,6 @@ class Board:
         #print(f"this is the position that is being DEFINITEVLY returned to the Simulation object ===> {endCellCheck}")
         return endCellCheck
 
-    def cpuBoatPosition(self,boat,boatLength):
-        print("The CPU Opponent will now select their board layout:")
-
-        pass
-
-    def hold():
-        pass
-
-
 #Notes: Put promptOrientationSelect such that it returns orientationChoice if the check comes out bad
     def promptOrientationSelect(self,selectedCell):
         orientationChoice = input(f"Cell Selection {selectedCell}\n"
@@ -275,20 +266,16 @@ class Board:
     def checkBoatOrientation(self,selectedCell,boat, boatLength,uBoatOrientation):
         adjBoatPos = self.translateUserCell(selectedCell)
         redoInput = False
-        #print(f"\n this is your check that the correct orientation vector is being applied to your boat direction - {self.orientationOptions[uBoatOrientation]}\n"
-        #f"orientation select - {uBoatOrientation}\n" f"boat position, XY format {adjBoatPos}\n")
         PosFinal = [self.orientationOptions[uBoatOrientation][0]*(boatLength-1)+adjBoatPos[0],self.orientationOptions[uBoatOrientation][1]*(boatLength-1)+adjBoatPos[1]]
-        #print(f"final playing position being captured in checkBoatOrientation ===> {PosFinal}\n\n")
-        #This is a stupid loop; you're checking both dimensions of the array, even if the first one fails
         for x in PosFinal:
             if x < 0 or x > len(self.gameBoard)-1:
                 redoInput = True
         if redoInput:
             print("It seems like the orientation you tried to specify for your boat is not valid as it doesn't lie in the playing field; \n"
             "please try again or consider selecting a new starting position for your boat")
-            PosFinal = self.specifyBoatOrientation(selectedCell,boat,boatLength) #changing this to PosFinal = ... made the code actually work - still need to understand why that is 
-        
+            PosFinal = self.specifyBoatOrientation(selectedCell,boat,boatLength)  
         return PosFinal
+
             
 #checkValidPositionInput will check the user's selection for orientation of their current boat; if the option isn't valid, it will prompt the user to give their position input again
 #   selectedCell -> selectedCell is the user's starting boat position option
@@ -307,15 +294,11 @@ class Board:
         if adjBoatPos[count] != endCell[count]:
             boardCoord = [x for x in adjBoatPos] 
             allBoatCoords = self.getBoatCoords(boardCoord,adjBoatPos,endCell,count)
-            #print(f"these are the variables being passed to checkIntersection:\n boat - {boat}\n boatLength - {boatLength}\n Coords - {allBoatCoords}")
             if self.checkIntersection(boat,boatLength,allBoatCoords):
                 for x in allBoatCoords:
                     self.gameBoard[tuple(x)] = self.shipSafe
-                print(self.gameBoard) #testing if applyBoatPosition is working 
                 self.storeBoatPos(boat,allBoatCoords)
-
         else:
-            #print("If this triggers something REALLY wrong is happening lol")
             count += 1 
             self.applyBoatPosition(boat,boatLength,uCell,endCell,count)
 
@@ -359,15 +342,92 @@ class Board:
     def intersectMessage(self):
         print("It seems like you've placed a boat such that it overlaps with an existing boat on the board; please start again and try picking a new position for this current boat:")
     
-    
     def storeBoatPos(self,boat,finalBoatCoords):
         self.storedPositions[boat] = finalBoatCoords
 
-myBoard1 = Board(True)
-myBoard2 = Board(True)
+#cpuBoatPlacing will assigned the used cells to consumedCells list 
+    def cpuBoatPlacing(self,boat,boatLength):
+        print("The CPU Opponent will now select their board layout:")
+        print(f"Boat - {boat}; boat length - {boatLength}")
+        print(f"This is what the cpu has used at the start of this boat {self.cpuUsedCells}")
+        placingBoat = True
+        while placingBoat:
+            print("stuck in cbp")
+            time.sleep(1)
+            selectCell = self.cpuOptions[random.randint(0,(len(self.cpuOptions)-1))]
+            finalCell = self.cpuBoatOrientation(selectCell,boat,boatLength)
+            placingBoat = self.applyCPUBoats(boat,boatLength,selectCell,finalCell,placingBoat, count = 0)
+        
+        
+    def cpuBoatOrientation(self,selectCell,boat,boatLength):
+        cpuOrientationOpts = [str(x) for x in range(1,5)]
+        choosingOrientation = True
+        while choosingOrientation:
+            print("stuck in cBO")
+            time.sleep(1)
+            indexSelect = random.randint(0,(len(cpuOrientationOpts)-1))
+            selectOrient = cpuOrientationOpts[indexSelect]
+            PosFinal = self.calCPUPosFinal(selectCell,boatLength,selectOrient)
+            if self.checkCPUOrientation(PosFinal):
+                cpuOrientationOpts.pop(indexSelect)
+            else:
+                choosingOrientation = False
+        return PosFinal
+
+    def calCPUPosFinal(self,selectedCell,boatLength,cpuOrientation):
+        adjBoatPos = self.translateUserCell(selectedCell)
+        print(adjBoatPos)
+        print(cpuOrientation)
+        return [self.orientationOptions[cpuOrientation][0]*(boatLength-1)+adjBoatPos[0],self.orientationOptions[cpuOrientation][1]*(boatLength-1)+adjBoatPos[1]]
+
+    def checkCPUOrientation(self,PosFinalTest):
+        redoInput = False
+        for x in PosFinalTest:
+            if x < 0 or x > len(self.gameBoard)-1:
+                redoInput = True
+        return redoInput
+
+    def applyCPUBoats(self,boat,boatLength,uCell,endCell,placingBoatCheck,count):
+        adjBoatPos = self.translateUserCell(uCell)
+        if adjBoatPos[count] != endCell[count]:
+            boardCoord = [x for x in adjBoatPos] 
+            allBoatCoords = self.getBoatCoords(boardCoord,adjBoatPos,endCell,count)
+            print(f"This is all the potential boat coordinates being assessed for placement (determined in applyCPUBoats): {allBoatCoords}")
+            runIntersectCheck = self.cpuIntersectPass(allBoatCoords)
+            if runIntersectCheck:
+                for x in allBoatCoords:
+                    self.gameBoard[tuple(x)] = self.shipSafe
+                self.storeBoatPos(boat,allBoatCoords)
+                placingBoatCheck = False
+                self.addCPUList(allBoatCoords)
+            else:
+                print("cpu tried placing cell on existing boat; the cpu will be forced to select again")
+                self.cpuBoatPlacing(boat,boatLength)
+        else:
+            count += 1 
+            self.applyCPUBoats(boat,boatLength,uCell,endCell,placingBoatCheck,count)
+        return placingBoatCheck
+        
+    def addCPUList(self,finalizedBoatCoords):
+        for x in finalizedBoatCoords:
+            self.cpuUsedCells.append(x)
+
+    def cpuIntersectPass(self,potentialSpots):
+        validPlacement = True
+        count = 0
+        while validPlacement and count<len(potentialSpots):
+            if potentialSpots[count] in self.cpuUsedCells:
+                validPlacement = False
+            count +=1 
+        print(f"This is the boolean being returned by cpuIntersectPass - {validPlacement}")
+        return validPlacement
+
+cpuState = True
+myBoard1 = Board(cpuState)
+myBoard2 = Board(cpuState)
 
 testGame = Simulation(myBoard1,myBoard2)
-testGame.playGameTest()
+testGame.testCPUBoardBuilding()
 
 
 
