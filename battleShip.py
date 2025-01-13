@@ -11,10 +11,16 @@ class Simulation():
     def runBoardBuilding(self):
         for x in self.players:
             for key, value in x.ships.items():
-                userCellInput = x.userBoatPosPrompt(key,value)
-                endBoatPoint = x.specifyBoatOrientation(userCellInput,key,value)
-                #print(f"this is the end point being passed to applyBoatPosition {endBoatPoint}")
-                x.applyBoatPosition(key,value,userCellInput,endBoatPoint, count = 0)
+                if x.cpuOpponent:
+                    x.cpuBoatPlacing(key,value)
+                else:
+                    self.playerBoardBuild(x,key,value) #should this function be a part of the board object instead of the Simulation object?
+
+    def playerBoardBuild(self,player,key,value):
+        userCellInput = player.userBoatPosPrompt(key,value)
+        endBoatPoint = player.specifyBoatOrientation(userCellInput,key,value)
+        #print(f"this is the end point being passed to applyBoatPosition {endBoatPoint}")
+        player.applyBoatPosition(key,value,userCellInput,endBoatPoint, count = 0)
 
 #playerTurn defines the ATTACKING player
 #TO-DO:
@@ -106,6 +112,7 @@ class Simulation():
     def startTurnsMessage(self):
         print("All boats have been placed - this is the start of the turns; Player 1 will be first for selecting cells")
 
+#Notice how playerTurn gets defined in cycleTurns() function - 0 means that player 1 is attacking first 
     def playGameTest(self):
         #self.runBoardBuilding()
         print(self.players[0].cpuOptions)
@@ -423,20 +430,11 @@ class Board:
         return validPlacement
 
 cpuState = True
-myBoard1 = Board(cpuState)
-myBoard2 = Board(cpuState)
+myBoard1 = Board(False)
+myBoard2 = Board(True)
 
 testGame = Simulation(myBoard1,myBoard2)
-testGame.testCPUBoardBuilding()
+testGame.runBoardBuilding()
 
 
-
-#To do:
-#   - test functionality during ship position application to re-pick the cell position if desired 
-
-#   - current user input filtering will flag if a user puts a space between characters selected; might be worth having a method that allows spaces 
-#   - test intersection detecting capabilities 
-
-#   checkValidPositionInput is SO dumb right now -should make the prompt for position input it's own function so that you can call it more easily
-#       - since it's tied to specifyBoatOrientation it makes it difficult to recursively correct 
 
