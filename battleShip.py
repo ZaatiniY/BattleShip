@@ -347,7 +347,7 @@ class Board:
 
 #cpuBoatPlacing will assigned the used cells to consumedCells list 
     def cpuBoatPlacing(self,boat,boatLength):
-        print("The CPU Opponent will now select their board layout:")
+        print("\n\nThe CPU Opponent will now select their board layout:")
         print(f"Boat - {boat}; boat length - {boatLength}")
         print(f"This is what the cpu has used at the start of this boat {self.cpuUsedCells}")
         placingBoat = True
@@ -402,10 +402,9 @@ class Board:
                 self.addCPUList(allBoatCoords)
             else:
                 print("cpu tried placing cell on existing boat; the cpu will be forced to select again")
-                self.cpuBoatPlacing(boat,boatLength)
         else:
             count += 1 
-            self.applyCPUBoats(boat,boatLength,uCell,endCell,placingBoatCheck,count)
+            placingBoatCheck = self.applyCPUBoats(boat,boatLength,uCell,endCell,placingBoatCheck,count)
         return placingBoatCheck
         
     def addCPUList(self,finalizedBoatCoords):
@@ -413,6 +412,7 @@ class Board:
             self.cpuUsedCells.append(x)
 
     def cpuIntersectPass(self,potentialSpots):
+        print(f"This is all the potential boat coordinates being assessed for placement (passed to checkIntersectPass): {potentialSpots}")
         validPlacement = True
         count = 0
         while validPlacement and count<len(potentialSpots):
