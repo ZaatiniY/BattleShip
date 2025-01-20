@@ -10,8 +10,8 @@ class Simulation():
         self.cpuAttackChoices = player1Board.cpuOptions #gives the self object the call to have all active places on the board 
 
         #These lists are used in cpu decision matrix to choose its next spot target
-        self.cpuFollowup = []
-        self.cpuVector = []
+        self.cpuFollowup = [] #will be stored as list of lists such that the sublist are coordinates in the format [r,c]
+        self.cpuVector = [] #will be stored as list of lists such that the sublist are coordinates in the format [r,c]
 
     def runBoardBuilding(self):
         for x in self.players:
@@ -65,33 +65,49 @@ class Simulation():
         pass
 
 #THIS CODE WILL BE START OF GIVING CPU ITS SELECTION ALGORITHM
-    def iCPUAttackSelect(self):
+    def blindAttackSequence(self):
         iChoice = self.cpuAttackChoices[random.randint(0,len(self.cpuAttackChoices))]
         cellChoice = self.translateUserTarg(iChoice)
+        self.cpuAttackChoices.pop(iChoice) #removing it from further use in the future 
         return cellChoice 
 
-    def inititeAttackSequence(self):
-        if len(self.cpuFollowup) == 0:
-            attackChoice = self.iCPUAttackSelect()
+    def cpuAttackTree(self):
+        if len(self.cpuFollowup) == 0:#option correleating with the cpu having no prior knowledge 
+            attackChoice = self.blindAttackSequence()
+        elif len(self.cpuVector) == 0: #picking a random option from followUp
+            
+            pass
         else:
             pass
-    
-    def cpuUndirectedFollow(self,rootCell):
+
+    def followUpAttackSequence(self):
+        nextAttempt = self.cpuFollowup[0]
+
+#This will literally only work for blind firing sequence, since for the vector sequence you're already going to have the battle ship be hit by the time you need to pass v
+#   NEED TO THINK OF ANOTHER WAY TO GO ABOUT THIS 
+    def addToCPUFollowUps(self,hitList,playerTurn):
+        for x in hitList:
+            if self.players[playerTurn].gameBoard[x] == self.players[playerTurn].shipSafe:
+                self.cpuFollowup.append(x)
+
+    #cpuUndirectedFollowUp just goes through the process of calling necessary functions to get a successful follow-up cell to attack  
+    def cpuUndirectedFollowUp(self,rootCell):
         cpuDirectionOpts = [str(x) for x in range(1,5)]
         redoInput = False 
         while not redoInput: 
             hashDirectionIndex = str(random.randint(0,len(cpuDirectionOpts)))
             cpuDirectionOpts.pop(hashDirectionIndex)
-            followupCell = self.chooseAdjacentCell(rootCell,cpuDirectionOpts,hashDirectionIndex)
+            followupCell = self.lockAdjacentCell(rootCell,cpuDirectionOpts,hashDirectionIndex)
             redoInput = self.cpuCheckNextShotValid(followupCell)
         return followupCell
 
-    def chooseAdjacentCell(self, rootCell,cpuAvailDirections,hashDirectionIndex):
+    def lockAdjacentCell(self, rootCell,cpuAvailDirections,hashDirectionIndex):
         directionVectors = self.players[0].orientationOptions
         adjCell = self.translateUserTarg(rootCell)
         directionChoice = directionVectors[hashDirectionIndex]
         chosenCell = [rootCell[x] + directionChoice[x] for x in range(len(directionChoice))]
         return chosenCell
+
 
 #Note - nextChoice here definitely implies the need for something in the format [row,column]
     def cpuCheckNextShotValid(self, nextChoice):
@@ -101,19 +117,22 @@ class Simulation():
                 redoInput = True
         if redoInput is False:
             boardState = self.players[0].gameBoard[tuple(nextChoice)]
-            if boardState == self.players[0].emptySpotHit or boardState == self.players[0].emptySpotHit:
+            if boardState == self.players[0].emptySpotHit or boardState == self.players[0].shipHit:
                 redoInput = True
         return redoInput
 
 #nextVectorShot will return the next target on the board based on what options are available adjacent to targets in the cpu's vector range
     def nextVectorShot(self):
         currentDirectionIndex = self.getVectorDirectionIndex() #currentDirection is given as a 2-dim list that will apply the direction to the vector search
-        adjacentTargets = self.calculateVectorExtensions()
+        adjacentTargets = self.calculateVectorExtensions(currentDirectionIndex)
 
 
 #this way of assigning the vector extension is UNBELIVABLY headass - like make a loop bro
+#Notes - vectorOptions is going to return the ends of the current attack vector through which the cpu is searching 
+#   -Remember, if the list comes back empty, it's because no targets are currently valid from the possible vector extensions. In which case, the list  cpuFollowup list 
+#       needs to be referenced to choose next attack targets
     def calculateVectorExtensions(self,index):
-        oppositeindex = abs(1-index)
+        oppositeindex = 1-index
         highCell = [0,0]
         lowCell = [0,0]
         for x in range(len(self.cpuVector)):
@@ -123,7 +142,13 @@ class Simulation():
         highCell[index] = highValue
         lowCell[oppositeindex] = self.cpuVector[0][oppositeindex]
         lowCell[index] = lowValue
-        
+        vectorOptions = [highCell,lowCell]
+        for x in range(len(vectorOptions)):
+            if self.cpuCheckNextShotValid(vectorOptions[x]) is True:
+                vectorOptions.pop(X)    
+        return vectorOptions
+    
+
     
 
     #getVectorDirectionIndex tells you which dimension (rows or columns) the ship is moving along
