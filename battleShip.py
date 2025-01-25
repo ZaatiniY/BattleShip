@@ -1,5 +1,4 @@
 import numpy as np
-import pandas as pd
 import random
 import time
 
@@ -61,8 +60,6 @@ class Simulation():
             userSelect = self.promptPlayerAttack(playerTurn)
         return userSelect
 
-    def cpuSelectAttack(playerTurn):
-        pass
 #---------------------------------------------------------------------------------------------------------------------------------------------------
 #THIS CODE WILL BE START OF GIVING CPU ITS SELECTION ALGORITHM
     def blindAttackSequence(self,playerTurn):
@@ -73,43 +70,58 @@ class Simulation():
         self.addToCPUFollowUps(cellChoice,playerTurn) 
         return cellChoice 
 
+    def vectorSequence(self,playerTurn,attackChoice):
+        boatDirection = self.getVectorDirectionIndex()
+        vectorExtensionOpts = self.calculateVectorExtensions(boatDirection) #reminder - calculateVectorExtensions should do a check for the coordinate to lie on the numpy field
+        if len(vectorExtensionOpts) > 0:
+            attackChoice.append(vectorExtensionOpts[0])
+        else:
+            pass
 
     def cpuAttackTree(self,playerTurn):
-        attackSelected = False
-        #EAch option in the decision tree carries out the function cpuNextShotValid check to make sure a correct space is selected
-        if len(self.cpuFollowup) == 0:#option correleating with the cpu having no prior knowledge 
-            attackChoice = self.blindAttackSequence(playerTurn)
-        elif len(self.cpuVector) == 0: #picking a random option from followUp
-            
-            pass
-        else:
-            rootCellTarget = self.cpuFollowup[0]
-            attackChoice = self.cpuUndirectedFollowUp(rootCellTarget)
-
-
+        attackChoice = [] 
+        while len(attackChoice) < 1:
+            if len(self.cpuFollowup) == 0:#option correleating with the cpu having no prior knowledge 
+                attackChoice.append(self.blindAttackSequence(playerTurn))
+            elif len(self.cpuVector) == 0: #picking a random option from followUp
+                pass
+                
+            else:
+                self.cpuFollowUpSeq(attackChoice)
     
-    def cpuBlindFollowSeq(self):
+    def cpuFollowUpSeq(self,attackChoice,playerTurn):
         rootCellTarget = self.cpuFollowup[0]
-        attackChoice = self.cpuUndirectedFollowUp(rootCellTarget)
+        attackChoice.append(self.cpuUndirectedFollowUp(rootCellTarget))
+        if len(attackChoice) < 1:
+            self.cpuFollowup.pop[0]
+        else:
+            self.vectorCheck(self.cpuFollowup[0],attackChoice,playerTurn)
         
-        
+    def vectorCheck(self,currentRoot, targetCell):
+        if self.players[0].gameBoard[tuple(targetCell)] == self.players[0].shipHit:
+            if len(self.cpuVector) > 0:
+                self.cpuVector.append(targetCell)
+            else:
+                self.cpuVector.append(currentRoot)
+                self.cpuVector.append(targetCell)
 
 #This will literally only work for blind firing sequence, since for the vector sequence you're already going to have the battle ship be hit by the time you need to pass v
-#   NEED TO THINK OF ANOTHER WAY TO GO ABOUT THIS 
+#   NEED TO THINK OF ANOTHER WAY TO GO ABOUT THIS
     def addToCPUFollowUps(self,hitList,playerTurn):
         for x in hitList:
             if self.players[playerTurn].gameBoard[x] == self.players[playerTurn].shipSafe:
                 self.cpuFollowup.append(x)
 
     #cpuUndirectedFollowUp just goes through the process of calling necessary functions to get a successful follow-up cell to attack  
-    def cpuUndirectedFollowUp(self,rootCell):
+    def cpuUndirectedFollowUp(self,rootCell,playerTurn):
+        targetPlayer = self.switchPlayer(playerTurn)
         followupCell = []
         cpuDirectionOpts = [str(x) for x in range(1,5)]
         redoInput = False 
         while not redoInput and len(cpuDirectionOpts)>0:
             hashDirectionIndex = str(random.randint(0,len(cpuDirectionOpts)))
             followupCell.append(self.chooseAdjacentCell(rootCell,cpuDirectionOpts,hashDirectionIndex))
-            redoInput = self.cpuCheckNextShotValid(followupCell)
+            redoInput = self.cpuCheckNextShotValid(followupCell,targetPlayer)
         return followupCell
 
 #chooseAdjacentCell will select next random direction to go from a cpuFollowUp
@@ -124,14 +136,14 @@ class Simulation():
 #cpuCheckNextShotValid will take an input in the [r,c] format  and determine whether the option is in the proper format
 #Note - nextChoice(list) here definitely implies the need for something in the format [row,column]
 #Return - redoInput (boolean): Gives response if next shot is a valid option {true} or if it needs to be selected again {false}
-    def cpuCheckNextShotValid(self, nextChoice):
+    def cpuCheckNextShotValid(self, nextChoice,targetPlayer):
         redoInput = False
         for x in nextChoice:
             if x < 0 or x > len(self.gameBoard)-1:
                 redoInput = True
         if redoInput is False:
-            boardState = self.players[0].gameBoard[tuple(nextChoice)]
-            if boardState == self.players[0].emptySpotHit or boardState == self.players[0].shipHit:
+            boardState = self.players[targetPlayer].gameBoard[tuple(nextChoice)]
+            if boardState == self.players[targetPlayer].emptySpotHit or boardState == self.players[targetPlayer].shipHit:
                 redoInput = True
         return redoInput
 
@@ -196,10 +208,18 @@ class Simulation():
             selectCell = self.promptPlayerAttack(turn)
             self.processTarg(selectCell)
 
-
+#translateUserTarg takes the input of something in the string format 'X#' and returns a coordinate that can be placed on the numpy gameBoard array tied to a Board object  
     def translateUserTarg(self,uInput):
         return (self.players[0].boardRows.index(uInput[0]),int(uInput[1]))
 
+#translateCoordTarg takes parameter Input (list) in the format [r,c] and translates it to the battleship coordinate game format (string "x#")
+    def translateCoordTarg(self,Input):
+        translatedCoords = []
+        for x in Input:
+            rows = self.players[0].boardRows[Input[0]]
+            columns = self.players[0].boardRows[Input[1]]
+            translatedCoords.append(rows+columns)
+        return translatedCoords
 
     def checkTargetInput(self,uInput,turn):
         inputCheck = list(uInput.upper())
