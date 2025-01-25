@@ -63,25 +63,36 @@ class Simulation():
 
     def cpuSelectAttack(playerTurn):
         pass
-
+#---------------------------------------------------------------------------------------------------------------------------------------------------
 #THIS CODE WILL BE START OF GIVING CPU ITS SELECTION ALGORITHM
-    def blindAttackSequence(self):
-        iChoice = self.cpuAttackChoices[random.randint(0,len(self.cpuAttackChoices))]
+    def blindAttackSequence(self,playerTurn):
+        iChoice = random.randint(0,len(self.cpuAttackChoices))
+        choice = self.cpuAttackChoice[iChoice]
         cellChoice = self.translateUserTarg(iChoice)
-        self.cpuAttackChoices.pop(iChoice) #removing it from further use in the future 
+        self.cpuAttackChoices.pop(iChoice) #removing it from further use in the future
+        self.addToCPUFollowUps(cellChoice,playerTurn) 
         return cellChoice 
 
-    def cpuAttackTree(self):
+
+    def cpuAttackTree(self,playerTurn):
+        attackSelected = False
+        #EAch option in the decision tree carries out the function cpuNextShotValid check to make sure a correct space is selected
         if len(self.cpuFollowup) == 0:#option correleating with the cpu having no prior knowledge 
-            attackChoice = self.blindAttackSequence()
+            attackChoice = self.blindAttackSequence(playerTurn)
         elif len(self.cpuVector) == 0: #picking a random option from followUp
             
             pass
         else:
-            pass
+            rootCellTarget = self.cpuFollowup[0]
+            attackChoice = self.cpuUndirectedFollowUp(rootCellTarget)
 
-    def followUpAttackSequence(self):
-        nextAttempt = self.cpuFollowup[0]
+
+    
+    def cpuBlindFollowSeq(self):
+        rootCellTarget = self.cpuFollowup[0]
+        attackChoice = self.cpuUndirectedFollowUp(rootCellTarget)
+        
+        
 
 #This will literally only work for blind firing sequence, since for the vector sequence you're already going to have the battle ship be hit by the time you need to pass v
 #   NEED TO THINK OF ANOTHER WAY TO GO ABOUT THIS 
@@ -92,24 +103,27 @@ class Simulation():
 
     #cpuUndirectedFollowUp just goes through the process of calling necessary functions to get a successful follow-up cell to attack  
     def cpuUndirectedFollowUp(self,rootCell):
+        followupCell = []
         cpuDirectionOpts = [str(x) for x in range(1,5)]
         redoInput = False 
-        while not redoInput: 
+        while not redoInput and len(cpuDirectionOpts)>0:
             hashDirectionIndex = str(random.randint(0,len(cpuDirectionOpts)))
-            cpuDirectionOpts.pop(hashDirectionIndex)
-            followupCell = self.lockAdjacentCell(rootCell,cpuDirectionOpts,hashDirectionIndex)
+            followupCell.append(self.chooseAdjacentCell(rootCell,cpuDirectionOpts,hashDirectionIndex))
             redoInput = self.cpuCheckNextShotValid(followupCell)
         return followupCell
 
-    def lockAdjacentCell(self, rootCell,cpuAvailDirections,hashDirectionIndex):
+#chooseAdjacentCell will select next random direction to go from a cpuFollowUp
+    def chooseAdjacentCell(self, rootCell,cpuAvailDirections,hashDirectionIndex):
         directionVectors = self.players[0].orientationOptions
         adjCell = self.translateUserTarg(rootCell)
-        directionChoice = directionVectors[hashDirectionIndex]
-        chosenCell = [rootCell[x] + directionChoice[x] for x in range(len(directionChoice))]
+        directionChoice = directionVectors[cpuAvailDirections[hashDirectionIndex]]
+        chosenCell = [adjCell[x] + directionChoice[x] for x in range(len(directionChoice))]
+        cpuAvailDirections.pop(hashDirectionIndex)
         return chosenCell
 
-
-#Note - nextChoice here definitely implies the need for something in the format [row,column]
+#cpuCheckNextShotValid will take an input in the [r,c] format  and determine whether the option is in the proper format
+#Note - nextChoice(list) here definitely implies the need for something in the format [row,column]
+#Return - redoInput (boolean): Gives response if next shot is a valid option {true} or if it needs to be selected again {false}
     def cpuCheckNextShotValid(self, nextChoice):
         redoInput = False
         for x in nextChoice:
@@ -131,8 +145,10 @@ class Simulation():
 #Notes - vectorOptions is going to return the ends of the current attack vector through which the cpu is searching 
 #   -Remember, if the list comes back empty, it's because no targets are currently valid from the possible vector extensions. In which case, the list  cpuFollowup list 
 #       needs to be referenced to choose next attack targets
+#   - Parameters:
+#       -i - given from getVectorDirectionIndex; gives the direction of the boat in which you're attacking 
     def calculateVectorExtensions(self,index):
-        oppositeindex = 1-index
+        oppositeindex = 1-index #index tells you which direction you want to increment by +/- 1 to find additional boat locations; opposite index will stay constant
         highCell = [0,0]
         lowCell = [0,0]
         for x in range(len(self.cpuVector)):
@@ -145,13 +161,11 @@ class Simulation():
         vectorOptions = [highCell,lowCell]
         for x in range(len(vectorOptions)):
             if self.cpuCheckNextShotValid(vectorOptions[x]) is True:
-                vectorOptions.pop(X)    
+                vectorOptions.pop(x)    
         return vectorOptions
     
-
-    
-
     #getVectorDirectionIndex tells you which dimension (rows or columns) the ship is moving along
+    #return i - whether the current targets of boat is moving alonng boat or lines 
     def getVectorDirectionIndex(self):
         findingIndex = True
         i = 0
@@ -160,7 +174,7 @@ class Simulation():
                 findingIndex = False
             i += 1
         return i
-
+#--------------------------------------------------------------------------------------------------
     def processTarg(self,selectCell,turn): 
         successfulTurn = False #successful turn only counts if a turn doesn't need to be repeated because someone has selected a cell that already has been targeted before
         playerTarg = self.players[self.switchPlayer(turn)]
