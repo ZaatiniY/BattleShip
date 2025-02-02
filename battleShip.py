@@ -35,6 +35,7 @@ class Simulation():
         winCheck = False
         while not winCheck: 
             userSelect = self.chooseAttackMethod(playerTurn)
+            print(f"This is the variable going into processTarg function: {userSelect}")
             self.processTarg(userSelect,playerTurn)
             playerTurn = self.switchPlayer(playerTurn)
             winCheck = self.checkWinState(playerTurn,boatCount = 0, positionCount=0)
@@ -54,8 +55,9 @@ class Simulation():
         return chosenCell
 
     def chooseAttackMethod(self,playerTurn):
-        if self.players[playerTurn].cpuOpponent:
-            pass
+        if self.players[playerTurn].cpuOpponent is True:
+            userSelect = self.cpuAttackTree(playerTurn)
+            userSelect = self.translateCoordTarg([userSelect])
         else:
             userSelect = self.promptPlayerAttack(playerTurn)
         return userSelect
@@ -64,19 +66,20 @@ class Simulation():
 #THIS CODE WILL BE START OF GIVING CPU ITS SELECTION ALGORITHM
     def blindAttackSequence(self,playerTurn):
         iChoice = random.randint(0,len(self.cpuAttackChoices))
-        choice = self.cpuAttackChoice[iChoice]
-        cellChoice = self.translateUserTarg(iChoice)
+        choice = self.cpuAttackChoices[iChoice]
+        cellChoice = self.translateUserTarg(choice)
         self.cpuAttackChoices.pop(iChoice) #removing it from further use in the future
         self.addToCPUFollowUps(cellChoice,playerTurn) 
         return cellChoice 
 
-    def vectorSequence(self,playerTurn,attackChoice):
-        boatDirection = self.getVectorDirectionIndex()
-        vectorExtensionOpts = self.calculateVectorExtensions(boatDirection) #reminder - calculateVectorExtensions should do a check for the coordinate to lie on the numpy field
-        if len(vectorExtensionOpts) > 0:
-            attackChoice.append(vectorExtensionOpts[0])
-        else:
-            pass
+# Don't think this code was necessary -> scratched it out while testing
+    # def vectorSequence(self,playerTurn,attackChoice):
+    #     boatDirection = self.getVectorDirectionIndex()
+    #     vectorExtensionOpts = self.calculateVectorExtensions(boatDirection) #reminder - calculateVectorExtensions should do a check for the coordinate to lie on the numpy field
+    #     if len(vectorExtensionOpts) > 0:
+    #         attackChoice.append(vectorExtensionOpts[0])
+    #     else:
+    #         pass
 
     def cpuAttackTree(self,playerTurn):
         attackChoice = [] 
@@ -84,10 +87,12 @@ class Simulation():
             if len(self.cpuFollowup) == 0:#option correleating with the cpu having no prior knowledge 
                 attackChoice.append(self.blindAttackSequence(playerTurn))
             elif len(self.cpuVector) == 0: #picking a random option from followUp
-                pass
+                self.cpuFollowUpSeq(attackChoice,playerTurn)
                 
             else:
-                self.cpuFollowUpSeq(attackChoice)
+                self.vectorBasedAttack(attackChoice,playerTurn)
+        print(f"This is the variable being returned from cpuAttackTree {attackChoice[0]}")
+        return attackChoice[0]
     
     def cpuFollowUpSeq(self,attackChoice,playerTurn):
         rootCellTarget = self.cpuFollowup[0]
@@ -108,9 +113,9 @@ class Simulation():
 #This will literally only work for blind firing sequence, since for the vector sequence you're already going to have the battle ship be hit by the time you need to pass v
 #   NEED TO THINK OF ANOTHER WAY TO GO ABOUT THIS
     def addToCPUFollowUps(self,hitList,playerTurn):
-        for x in hitList:
-            if self.players[playerTurn].gameBoard[x] == self.players[playerTurn].shipSafe:
-                self.cpuFollowup.append(x)
+        print(f"This is what's being passed to addToCPUFollowUps - {hitList}")
+        if self.players[playerTurn].gameBoard[tuple(hitList)] == self.players[playerTurn].shipHit:
+            self.cpuFollowup.append(hitList)
 
     #cpuUndirectedFollowUp just goes through the process of calling necessary functions to get a successful follow-up cell to attack  
     def cpuUndirectedFollowUp(self,rootCell,playerTurn):
@@ -148,10 +153,30 @@ class Simulation():
         return redoInput
 
 #nextVectorShot will return the next target on the board based on what options are available adjacent to targets in the cpu's vector range
-    def nextVectorShot(self):
+    def nextVectorShot(self,attackChoice):
         currentDirectionIndex = self.getVectorDirectionIndex() #currentDirection is given as a 2-dim list that will apply the direction to the vector search
         adjacentTargets = self.calculateVectorExtensions(currentDirectionIndex)
+        if len(adjacentTargets>0):
+            attackChoice.append(adjacentTargets[0])
 
+    def vectorBasedAttack(self,attackChoice,playerTurn):
+        oppositePlayer = self.switchPlayer(playerTurn)
+        self.nextVectorShot(attackChoice)
+        if len(attackChoice<1) or self.players[oppositePlayer].destroyedBoatStatus(attackChoice) is True:
+            self.closeVectorTargs
+             
+
+    def closeVectorTargs(self,attackChoice):
+        cleanList = []
+        for x in self.cpuVector:
+            if x not in self.cpuFollowup: 
+                cleanList.append(x)
+            if x in self.cpuFollowup:
+                self.cpuFollowup.pop(self.cpuFollowup.index(x))
+                tempUserFormat = self.translateCoordTarg
+                self.cpuAttackChoices.pop(self.cpuAttackChoices.index(tempUserFormat))
+        self.cpuVector = []
+            
 
 #this way of assigning the vector extension is UNBELIVABLY headass - like make a loop bro
 #Notes - vectorOptions is going to return the ends of the current attack vector through which the cpu is searching 
@@ -186,6 +211,8 @@ class Simulation():
                 findingIndex = False
             i += 1
         return i
+
+        
 #--------------------------------------------------------------------------------------------------
     def processTarg(self,selectCell,turn): 
         successfulTurn = False #successful turn only counts if a turn doesn't need to be repeated because someone has selected a cell that already has been targeted before
@@ -210,16 +237,19 @@ class Simulation():
 
 #translateUserTarg takes the input of something in the string format 'X#' and returns a coordinate that can be placed on the numpy gameBoard array tied to a Board object  
     def translateUserTarg(self,uInput):
-        return (self.players[0].boardRows.index(uInput[0]),int(uInput[1]))
+        uInput = uInput
+        print(uInput)
+        variable = [self.players[0].boardRows.index(uInput[0]),int(uInput[1])]
+        return variable
 
 #translateCoordTarg takes parameter Input (list) in the format [r,c] and translates it to the battleship coordinate game format (string "x#")
-    def translateCoordTarg(self,Input):
+    def translateCoordTarg(self,input):
         translatedCoords = []
-        for x in Input:
-            rows = self.players[0].boardRows[Input[0]]
-            columns = self.players[0].boardRows[Input[1]]
+        for x in input:
+            rows = self.players[0].boardRows[x[0]]
+            columns = self.players[0].boardColumns[x[1]]
             translatedCoords.append(rows+columns)
-        return translatedCoords
+        return translatedCoords[0]
 
     def checkTargetInput(self,uInput,turn):
         inputCheck = list(uInput.upper())
@@ -305,6 +335,8 @@ class Simulation():
         print(f"see player one board:\n {self.players[0].gameBoard}")
         print(self.players[0].storedPositions)
         #print(f"see player two board:\n {self.players[1].gameBoard}")
+
+    
 
 class Board:
     def __init__(self,cpuSelect):
@@ -573,13 +605,29 @@ class Board:
             count +=1 
         print(f"This is the boolean being returned by cpuIntersectPass - {validPlacement}")
         return validPlacement
+    
+    def destroyedBoatStatus(self,targetCell):
+        boatDestroyedStat = False
+        deleteKey = []
+        for key, value in self.storeBoatPos.items():
+            if targetCell in value:
+                value.pop(value.index(targetCell))
+            if len(value)<1:
+                deleteKey.append(key)
+        if len(deleteKey)<1:
+            self.destroyedBoatMes(deleteKey[0])
+            self.storeBoatPos.pop(deleteKey[0])
+            boatDestroyedStat = True
+        return boatDestroyedStat
+
+    def destroyedBoatMes(self,key):
+        print(f"You have destroyed the opponents {key}!!!")
 
 cpuState = True
 myBoard1 = Board(False)
 myBoard2 = Board(True)
 
 testGame = Simulation(myBoard1,myBoard2)
-testGame.runBoardBuilding()
-
+testGame.playGameTest()
 
 
