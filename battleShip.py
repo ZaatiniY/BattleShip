@@ -35,7 +35,7 @@ class Simulation():
         winCheck = False
         while not winCheck: 
             userSelect = self.chooseAttackMethod(playerTurn)
-            print(f"This is the variable going into processTarg function: {userSelect}")
+            #print(f"This is the variable going into processTarg function: {userSelect}")
             self.processTarg(userSelect,playerTurn)
             playerTurn = self.switchPlayer(playerTurn)
             winCheck = self.checkWinState(playerTurn,boatCount = 0, positionCount=0)
@@ -65,8 +65,12 @@ class Simulation():
 #---------------------------------------------------------------------------------------------------------------------------------------------------
 #THIS CODE WILL BE START OF GIVING CPU ITS SELECTION ALGORITHM
     def blindAttackSequence(self,playerTurn):
-        iChoice = random.randint(0,len(self.cpuAttackChoices))
+        iChoice = random.randint(0,len(self.cpuAttackChoices)-1)
         choice = self.cpuAttackChoices[iChoice]
+        #This should be deleted later - being done to avoid the blind fire sequence at start of game for TESTING
+        if self.clock <= 1:
+            choice = 'C5'
+            iChoice = self.cpuAttackChoices.index('C5')  
         cellChoice = self.translateUserTarg(choice)
         self.cpuAttackChoices.pop(iChoice) #removing it from further use in the future
         self.addToCPUFollowUps(cellChoice,playerTurn) 
@@ -85,25 +89,31 @@ class Simulation():
         attackChoice = [] 
         while len(attackChoice) < 1:
             if len(self.cpuFollowup) == 0:#option correleating with the cpu having no prior knowledge 
+                print("Currently trying a BLIND ATTACK")
                 attackChoice.append(self.blindAttackSequence(playerTurn))
             elif len(self.cpuVector) == 0: #picking a random option from followUp
+                print("Currently Trying FOLLOW Attack")
                 self.cpuFollowUpSeq(attackChoice,playerTurn)
                 
             else:
+                print("Currently Trying a VECTOR attack")
                 self.vectorBasedAttack(attackChoice,playerTurn)
-        print(f"This is the variable being returned from cpuAttackTree {attackChoice[0]}")
+        #print(f"This is the variable being returned from cpuAttackTree {attackChoice[0]}")
         return attackChoice[0]
     
     def cpuFollowUpSeq(self,attackChoice,playerTurn):
+        print("\nThis is you Enterinng the cpuFollowUpSeq")
+        print(f"This is the current class variable, cpuFollowup - {self.cpuFollowup}\n This is the value at index of zero - {self.cpuFollowup[0]}")
         rootCellTarget = self.cpuFollowup[0]
-        attackChoice.append(self.cpuUndirectedFollowUp(rootCellTarget))
+        attackChoice.append(self.cpuUndirectedFollowUp(rootCellTarget,playerTurn))
         if len(attackChoice) < 1:
             self.cpuFollowup.pop[0]
         else:
-            self.vectorCheck(self.cpuFollowup[0],attackChoice,playerTurn)
+            print(f"This is at end of FollowUpSeq:\n This is your attack choice being passed to vectorCheck function {attackChoice}")
+            self.vectorCheck(self.cpuFollowup[0],attackChoice[0],playerTurn)
         
-    def vectorCheck(self,currentRoot, targetCell):
-        if self.players[0].gameBoard[tuple(targetCell)] == self.players[0].shipHit:
+    def vectorCheck(self,currentRoot, targetCell,playerTurn):
+        if self.players[0].gameBoard[tuple(targetCell)] == self.players[0].shipSafe:
             if len(self.cpuVector) > 0:
                 self.cpuVector.append(targetCell)
             else:
@@ -114,27 +124,33 @@ class Simulation():
 #   NEED TO THINK OF ANOTHER WAY TO GO ABOUT THIS
     def addToCPUFollowUps(self,hitList,playerTurn):
         print(f"This is what's being passed to addToCPUFollowUps - {hitList}")
-        if self.players[playerTurn].gameBoard[tuple(hitList)] == self.players[playerTurn].shipHit:
+        targetPlayer = self.switchPlayer(playerTurn)
+        coordTest = self.players[targetPlayer].gameBoard[tuple(hitList)]
+        print(coordTest)
+        if coordTest == self.players[playerTurn].shipSafe:
             self.cpuFollowup.append(hitList)
 
     #cpuUndirectedFollowUp just goes through the process of calling necessary functions to get a successful follow-up cell to attack  
     def cpuUndirectedFollowUp(self,rootCell,playerTurn):
         targetPlayer = self.switchPlayer(playerTurn)
-        followupCell = []
+        #followupCell = []
         cpuDirectionOpts = [str(x) for x in range(1,5)]
-        redoInput = False 
-        while not redoInput and len(cpuDirectionOpts)>0:
-            hashDirectionIndex = str(random.randint(0,len(cpuDirectionOpts)))
-            followupCell.append(self.chooseAdjacentCell(rootCell,cpuDirectionOpts,hashDirectionIndex))
+        redoInput = True
+        while redoInput is True:
+            hashDirectionIndex = (random.randint(0,len(cpuDirectionOpts)-1))
+            print(f"\nYou are now in cpuUndirectedFollowUp\n Your selected hashDirectionIndex is {hashDirectionIndex}\n Your current cpuDirectionOpts - {cpuDirectionOpts}") #delete later as this as part of TESTING
+            followupCell = self.chooseAdjacentCell(rootCell,cpuDirectionOpts,hashDirectionIndex)
             redoInput = self.cpuCheckNextShotValid(followupCell,targetPlayer)
         return followupCell
 
 #chooseAdjacentCell will select next random direction to go from a cpuFollowUp
     def chooseAdjacentCell(self, rootCell,cpuAvailDirections,hashDirectionIndex):
         directionVectors = self.players[0].orientationOptions
-        adjCell = self.translateUserTarg(rootCell)
-        directionChoice = directionVectors[cpuAvailDirections[hashDirectionIndex]]
-        chosenCell = [adjCell[x] + directionChoice[x] for x in range(len(directionChoice))]
+        print(f"You are now in choose Adjacent Cell:\n These are your directionVectors option list from a Board Object - {directionVectors}\n This is the type of your directionVectors options - {type(directionVectors)}")
+        #adjCell = self.translateUserTarg(rootCell)
+        dictNavigator = cpuAvailDirections[hashDirectionIndex]
+        directionChoice = directionVectors[dictNavigator]
+        chosenCell = [rootCell[x] + directionChoice[x] for x in range(len(directionChoice))]
         cpuAvailDirections.pop(hashDirectionIndex)
         return chosenCell
 
@@ -144,7 +160,7 @@ class Simulation():
     def cpuCheckNextShotValid(self, nextChoice,targetPlayer):
         redoInput = False
         for x in nextChoice:
-            if x < 0 or x > len(self.gameBoard)-1:
+            if x < 0 or x > len(self.players[0].boardRows)-1:
                 redoInput = True
         if redoInput is False:
             boardState = self.players[targetPlayer].gameBoard[tuple(nextChoice)]
@@ -153,15 +169,15 @@ class Simulation():
         return redoInput
 
 #nextVectorShot will return the next target on the board based on what options are available adjacent to targets in the cpu's vector range
-    def nextVectorShot(self,attackChoice):
+    def nextVectorShot(self,attackChoice,targetPlayer):
         currentDirectionIndex = self.getVectorDirectionIndex() #currentDirection is given as a 2-dim list that will apply the direction to the vector search
-        adjacentTargets = self.calculateVectorExtensions(currentDirectionIndex)
+        adjacentTargets = self.calculateVectorExtensions(currentDirectionIndex,targetPlayer)
         if len(adjacentTargets>0):
             attackChoice.append(adjacentTargets[0])
 
     def vectorBasedAttack(self,attackChoice,playerTurn):
         oppositePlayer = self.switchPlayer(playerTurn)
-        self.nextVectorShot(attackChoice)
+        self.nextVectorShot(attackChoice,oppositePlayer)
         if len(attackChoice<1) or self.players[oppositePlayer].destroyedBoatStatus(attackChoice) is True:
             self.closeVectorTargs
              
@@ -184,8 +200,11 @@ class Simulation():
 #       needs to be referenced to choose next attack targets
 #   - Parameters:
 #       -i - given from getVectorDirectionIndex; gives the direction of the boat in which you're attacking 
-    def calculateVectorExtensions(self,index):
+    def calculateVectorExtensions(self,index,targetPlayer):
         oppositeindex = 1-index #index tells you which direction you want to increment by +/- 1 to find additional boat locations; opposite index will stay constant
+        print(f"Your are now in calculateVectorExtensions:\n This is your vector as of now - {self.cpuVector}\n This is your index as of now - {index}")
+        highValue = self.cpuVector[0][index]
+        lowValue = self.cpuVector[0][index]
         highCell = [0,0]
         lowCell = [0,0]
         for x in range(len(self.cpuVector)):
@@ -197,8 +216,8 @@ class Simulation():
         lowCell[index] = lowValue
         vectorOptions = [highCell,lowCell]
         for x in range(len(vectorOptions)):
-            if self.cpuCheckNextShotValid(vectorOptions[x]) is True:
-                vectorOptions.pop(x)    
+            if self.cpuCheckNextShotValid(vectorOptions[x],targetPlayer) is True:
+                vectorOptions.pop(x)   
         return vectorOptions
     
     #getVectorDirectionIndex tells you which dimension (rows or columns) the ship is moving along
@@ -206,10 +225,11 @@ class Simulation():
     def getVectorDirectionIndex(self):
         findingIndex = True
         i = 0
-        while findingIndex and i < len(self.cpuVector[0]):
+        while findingIndex is True:
             if self.cpuVector[0][i] == self.cpuVector[1][i]:
                 findingIndex = False
-            i += 1
+            else:
+                i += 1
         return i
 
         
@@ -233,11 +253,10 @@ class Simulation():
             print("You've already missed here before - please try selecting again")
         if not successfulTurn:
             selectCell = self.promptPlayerAttack(turn)
-            self.processTarg(selectCell)
+            self.processTarg(selectCell,turn)
 
 #translateUserTarg takes the input of something in the string format 'X#' and returns a coordinate that can be placed on the numpy gameBoard array tied to a Board object  
     def translateUserTarg(self,uInput):
-        uInput = uInput
         print(uInput)
         variable = [self.players[0].boardRows.index(uInput[0]),int(uInput[1])]
         return variable
