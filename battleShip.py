@@ -187,10 +187,22 @@ class Simulation():
         #I'm removing the part about stopping an attack on a line after an enemy boat has been destroyed
         #   the code below commented out is an artificat of that
         #if len(attackChoice)<1 or self.players[oppositePlayer].destroyedBoatStatus(attackChoice) is True:
+        positionsDeletingFromVector = []
+        if len(attackChoice)>0:
+            positionsDeletingFromVector.append(self.getObsoleteVectorPos(attackChoice[0]))
+        
         if len(attackChoice)<1:
             print("NOTICE - closeVectorTargs boolean IS BEING triggered")
             self.closeVectorTargs(attackChoice)
-             
+
+#getObsoleteVectorPos will call the Board's object function destroyedBoatStatus; which will add target cell to dict of hit boat positions as an instance variable
+#   return - usedPositions: list of positions that represent the cells that contributed to a boat being destroyed. list of sublists in the format [r,c]
+    def getObsoleteVectorPos(self,targetCell,targetPlayer):
+        usedPositions = []
+        destroyedBoatKey = self.players[targetPlayer].destroyedBoatStatus(targetCell)
+        if len(destroyedBoatKey) > 0:
+            usedPositions.append(self.players[targetPlayer].destroyedBoatPos[destroyedBoatKey[0]])
+        return usedPositions
 
     def closeVectorTargs(self,attackChoice):
         print("YOU ARE NOW IN closeVectorTarg")
