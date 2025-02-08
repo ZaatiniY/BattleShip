@@ -98,9 +98,15 @@ class Simulation():
             else:
                 print("Currently Trying a VECTOR attack")
                 self.vectorBasedAttack(attackChoice,playerTurn)
+                self.testingEndofVectorAttack(attackChoice)
+
         #print(f"This is the variable being returned from cpuAttackTree {attackChoice[0]}")
         return attackChoice[0]
     
+    def testingEndofVectorAttack(self,attackChoice):
+        print(f"You are about to exit vectorBasedAttack portion of your tree\n attack choice - {attackChoice}  \n current state of vector - {self.cpuVector} n\current state of followUp - {self.cpuFollowup} ")
+        input("Hit Enter when readdy to progress")
+
     def cpuFollowUpSeq(self,attackChoice,playerTurn):
         print("\nThis is you Enterinng the cpuFollowUpSeq")
         print(f"This is the current class variable, cpuFollowup - {self.cpuFollowup}\n This is the value at index of zero - {self.cpuFollowup[0]}")
@@ -172,24 +178,29 @@ class Simulation():
     def nextVectorShot(self,attackChoice,targetPlayer):
         currentDirectionIndex = self.getVectorDirectionIndex() #currentDirection is given as a 2-dim list that will apply the direction to the vector search
         adjacentTargets = self.calculateVectorExtensions(currentDirectionIndex,targetPlayer)
-        if len(adjacentTargets>0):
+        if len(adjacentTargets)>0:
             attackChoice.append(adjacentTargets[0])
 
     def vectorBasedAttack(self,attackChoice,playerTurn):
         oppositePlayer = self.switchPlayer(playerTurn)
         self.nextVectorShot(attackChoice,oppositePlayer)
-        if len(attackChoice<1) or self.players[oppositePlayer].destroyedBoatStatus(attackChoice) is True:
-            self.closeVectorTargs
+        #I'm removing the part about stopping an attack on a line after an enemy boat has been destroyed
+        #   the code below commented out is an artificat of that
+        #if len(attackChoice)<1 or self.players[oppositePlayer].destroyedBoatStatus(attackChoice) is True:
+        if len(attackChoice)<1:
+            print("NOTICE - closeVectorTargs boolean IS BEING triggered")
+            self.closeVectorTargs(attackChoice)
              
 
     def closeVectorTargs(self,attackChoice):
+        print("YOU ARE NOW IN closeVectorTarg")
         cleanList = []
         for x in self.cpuVector:
             if x not in self.cpuFollowup: 
                 cleanList.append(x)
             if x in self.cpuFollowup:
                 self.cpuFollowup.pop(self.cpuFollowup.index(x))
-                tempUserFormat = self.translateCoordTarg
+                tempUserFormat = self.translateCoordTarg()
                 self.cpuAttackChoices.pop(self.cpuAttackChoices.index(tempUserFormat))
         self.cpuVector = []
             
@@ -214,12 +225,16 @@ class Simulation():
         highCell[index] = highValue
         lowCell[oppositeindex] = self.cpuVector[0][oppositeindex]
         lowCell[index] = lowValue
-        vectorOptions = [highCell,lowCell]
-        for x in range(len(vectorOptions)):
-            if self.cpuCheckNextShotValid(vectorOptions[x],targetPlayer) is True:
-                vectorOptions.pop(x)   
-        return vectorOptions
+        vectorOptions = [highCell,lowCell] 
+        return self.deleteInvalidVectorExtensions(vectorOptions,targetPlayer)
     
+    def  deleteInvalidVectorExtensions(self,vectorOptions,targetPlayer):
+        for index in range(len(vectorOptions)-1,-1,-1):
+            if self.cpuCheckNextShotValid(vectorOptions[index],targetPlayer):
+                vectorOptions.pop(index)
+        return vectorOptions
+
+
     #getVectorDirectionIndex tells you which dimension (rows or columns) the ship is moving along
     #return i - whether the current targets of boat is moving alonng boat or lines 
     def getVectorDirectionIndex(self):
@@ -382,12 +397,20 @@ class Board:
             '5':[0,0] 
         }
         self.storedPositions = {
-        "Carrier":'',
-        "Battle Ship":'',
-        "Destroyer":'',
-        "Submarine":'',
-        "Patrol Boat":''
+        "Carrier":[],
+        "Battle Ship":[],
+        "Destroyer":[],
+        "Submarine":[],
+        "Patrol Boat":[]
         }
+
+        self.destroyedBoatPos = {
+        "Carrier":[],
+        "Battle Ship":[],
+        "Destroyer":[],
+        "Submarine":[],
+        "Patrol Boat":[]
+        } 
 
         self.cpuOpponent = cpuSelect
         self.cpuOptions = [x + y for x in self.boardRows for y in self.boardColumns]
@@ -625,22 +648,25 @@ class Board:
         print(f"This is the boolean being returned by cpuIntersectPass - {validPlacement}")
         return validPlacement
     
+#destroyedBoatStatus will return a list, where if a boat was destroyed by selection of "targetCell", the list will contain boat name that was destroyed
+#     return - list containing the name of the boat that was destroyed by most recent target Cell 
+# parameters:
+#   - targetCell - list in the format [r,c]; represents row and column position on game board matrix
     def destroyedBoatStatus(self,targetCell):
-        boatDestroyedStat = False
-        deleteKey = []
-        for key, value in self.storeBoatPos.items():
-            if targetCell in value:
-                value.pop(value.index(targetCell))
-            if len(value)<1:
-                deleteKey.append(key)
-        if len(deleteKey)<1:
-            self.destroyedBoatMes(deleteKey[0])
-            self.storeBoatPos.pop(deleteKey[0])
-            boatDestroyedStat = True
-        return boatDestroyedStat
+        deleteBoatKey = []
+        for boat, positions in self.storeBoatPos.items():
+            if targetCell in positions:
+                #positions.pop(positions.index(targetCell))
+                self.destroyedBoatPos[boat].append(targetCell)
+                if self.destroyedBoatPos[boat] == positions:
+                    deleteBoatKey.append(boat)
+        if len(deleteBoatKey)>0:
+            self.destroyedBoatMes(deleteBoatKey[0])
+            self.storeBoatPos.pop(deleteBoatKey[0])
+        return deleteBoatKey
 
-    def destroyedBoatMes(self,key):
-        print(f"You have destroyed the opponents {key}!!!")
+    def destroyedBoatMes(self,boat):
+        print(f"You have destroyed the opponents {boat}!!!")
 
 cpuState = True
 myBoard1 = Board(False)
