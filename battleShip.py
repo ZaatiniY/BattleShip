@@ -189,11 +189,8 @@ class Simulation():
         #if len(attackChoice)<1 or self.players[oppositePlayer].destroyedBoatStatus(attackChoice) is True:
         positionsDeletingFromVector = []
         if len(attackChoice)>0:
-            positionsDeletingFromVector.append(self.getObsoleteVectorPos(attackChoice[0]))
-        
-        if len(attackChoice)<1:
-            print("NOTICE - closeVectorTargs boolean IS BEING triggered")
-            self.closeVectorTargs(attackChoice)
+            positionsDeletingFromVector.append(self.getObsoleteVectorPos(attackChoice[0],oppositePlayer))
+        self.closeVectorTargs(attackChoice,oppositePlayer,positionsDeletingFromVector)
 
 #getObsoleteVectorPos will call the Board's object function destroyedBoatStatus; which will add target cell to dict of hit boat positions as an instance variable
 #   return - usedPositions: list of positions that represent the cells that contributed to a boat being destroyed. list of sublists in the format [r,c]
@@ -201,20 +198,49 @@ class Simulation():
         usedPositions = []
         destroyedBoatKey = self.players[targetPlayer].destroyedBoatStatus(targetCell)
         if len(destroyedBoatKey) > 0:
-            usedPositions.append(self.players[targetPlayer].destroyedBoatPos[destroyedBoatKey[0]])
+            usedPositions.append(self.players[targetPlayer].destroyedBoatPos[destroyedBoatKey[0]]) 
         return usedPositions
 
-    def closeVectorTargs(self,attackChoice):
-        print("YOU ARE NOW IN closeVectorTarg")
-        cleanList = []
-        for x in self.cpuVector:
-            if x not in self.cpuFollowup: 
-                cleanList.append(x)
-            if x in self.cpuFollowup:
-                self.cpuFollowup.pop(self.cpuFollowup.index(x))
-                tempUserFormat = self.translateCoordTarg()
-                self.cpuAttackChoices.pop(self.cpuAttackChoices.index(tempUserFormat))
-        self.cpuVector = []
+
+#most of closeVectorTargs should be different functions since it gets reused - consider revisiting
+#FUTURE WORK:
+#   Consider a way to make less stupid
+    def closeVectorTargs(self,attackChoice,targetPlayer,finishedBoatPositions):
+        if len(attackChoice)>0:
+            for vectorPosition in finishedBoatPositions:
+                self.cpuVector.remove(vectorPosition)
+                self.cpuAttackChoices.remove(self.translateCoordTarg(attackChoice[0]))
+                if vectorPosition in self.cpuFollowup:
+                    self.cpuFollowup.remove(vectorPosition)
+        else:
+            for vectorPosition in self.cpuVector[:]:
+                self.cpuVector.remove(vectorPosition)
+                if vectorPosition in self.cpuFollowup:
+                    self.cpuFollowup.remove(vectorPosition)
+
+
+                
+
+
+                    
+
+                
+                    
+                
+
+
+#This is old iteration of closeVectorTargs - new one will utilize values passed from getObsoleteVectorPos
+    # def closeVectorTargs(self,attackChoice):
+    #     print("YOU ARE NOW IN closeVectorTarg")
+    #     cleanList = []
+    #     for x in self.cpuVector:
+    #         if x not in self.cpuFollowup: 
+    #             cleanList.append(x)
+    #         if x in self.cpuFollowup:
+    #             self.cpuFollowup.pop(self.cpuFollowup.index(x))
+    #             tempUserFormat = self.translateCoordTarg()
+    #             self.cpuAttackChoices.pop(self.cpuAttackChoices.index(tempUserFormat))
+    #     self.cpuVector = []
             
 
 #this way of assigning the vector extension is UNBELIVABLY headass - like make a loop bro
@@ -225,7 +251,7 @@ class Simulation():
 #       -i - given from getVectorDirectionIndex; gives the direction of the boat in which you're attacking 
     def calculateVectorExtensions(self,index,targetPlayer):
         oppositeindex = 1-index #index tells you which direction you want to increment by +/- 1 to find additional boat locations; opposite index will stay constant
-        print(f"Your are now in calculateVectorExtensions:\n This is your vector as of now - {self.cpuVector}\n This is your index as of now - {index}")
+        print(f"YOU HAVE ENTERED calculateVECTOR EXTENSIONS :\n This is your vector as of now - {self.cpuVector}\n This is your index of attack as of now - {index}")
         highValue = self.cpuVector[0][index]
         lowValue = self.cpuVector[0][index]
         highCell = [0,0]
@@ -234,11 +260,14 @@ class Simulation():
             highValue = max(highValue, self.cpuVector[x][index])
             lowValue = min(lowValue,self.cpuVector[x][index])
         highCell[oppositeindex] = self.cpuVector[0][oppositeindex]
-        highCell[index] = highValue
+        highCell[index] = highValue+1
         lowCell[oppositeindex] = self.cpuVector[0][oppositeindex]
-        lowCell[index] = lowValue
+        lowCell[index] = lowValue-1
         vectorOptions = [highCell,lowCell] 
-        return self.deleteInvalidVectorExtensions(vectorOptions,targetPlayer)
+        print(f"THESE ARE THE OPTIONS BEING PASSED TO deleteInvalidVectorExtensions - {vectorOptions}")
+        validVectorOptions = self.deleteInvalidVectorExtensions(vectorOptions,targetPlayer)
+        input(f"THESE ARE THE OPTIONS YOU ARE PICKING AS VALID VECTOR EXTENSIONS - {validVectorOptions}; PRESS ENTER TO CONTINUE")
+        return validVectorOptions
     
     def  deleteInvalidVectorExtensions(self,vectorOptions,targetPlayer):
         for index in range(len(vectorOptions)-1,-1,-1):
@@ -319,8 +348,8 @@ class Simulation():
             while positionCount < len(currBoatPos) and win == True:
                 if self.players[turn].gameBoard[tuple(currBoatPos[positionCount])] == self.players[turn].shipSafe:
                     win = False
-                else: #This else portion is added to just track how the function is running; should be removed after game is finalized/tested
-                    print("Game has not been won by current player - play will continue") 
+                # else: #This else portion is added to just track how the function is running; should be removed after game is finalized/tested
+                #     print("Game has not been won by current player - play will continue") 
                 positionCount += 1
             boatCount +=1
         return win
