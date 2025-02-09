@@ -180,6 +180,10 @@ class Simulation():
         adjacentTargets = self.calculateVectorExtensions(currentDirectionIndex,targetPlayer)
         if len(adjacentTargets)>0:
             attackChoice.append(adjacentTargets[0])
+            #Find a better way to call the currently targeted spot by the cpu - Object call here looks UGLY
+            #purpose if this call is only to add a cell to cpuVector instance variable IF the target is a HIT
+            if self.players[targetPlayer].gameBoard[tuple(adjacentTargets[0])] == self.players[targetPlayer].shipSafe:
+                self.cpuVector.append(adjacentTargets[0])
 
     def vectorBasedAttack(self,attackChoice,playerTurn):
         oppositePlayer = self.switchPlayer(playerTurn)
@@ -206,13 +210,16 @@ class Simulation():
 #FUTURE WORK:
 #   Consider a way to make less stupid
     def closeVectorTargs(self,attackChoice,targetPlayer,finishedBoatPositions):
-        if len(attackChoice)>0:
+        input(f"You have entered closeVectorTargs - this is currently your vector {self.cpuVector}.\n This is currently your attack choice - {attackChoice[0]} \nHIT ENTER WHEN YOURE READY TO CONTINUE")
+        if len(attackChoice)>0 and len(finishedBoatPositions[0])>0:
+            print(len(finishedBoatPositions))
+            input(f"This is your finishedBoatPositions; it should be empty - {finishedBoatPositions}\n HIT ENTER WHEN READY TO CONTINUE")
             for vectorPosition in finishedBoatPositions:
                 self.cpuVector.remove(vectorPosition)
                 self.cpuAttackChoices.remove(self.translateCoordTarg(attackChoice[0]))
                 if vectorPosition in self.cpuFollowup:
                     self.cpuFollowup.remove(vectorPosition)
-        else:
+        elif len(attackChoice) < 1:
             for vectorPosition in self.cpuVector[:]:
                 self.cpuVector.remove(vectorPosition)
                 if vectorPosition in self.cpuFollowup:
@@ -252,17 +259,17 @@ class Simulation():
     def calculateVectorExtensions(self,index,targetPlayer):
         oppositeindex = 1-index #index tells you which direction you want to increment by +/- 1 to find additional boat locations; opposite index will stay constant
         print(f"YOU HAVE ENTERED calculateVECTOR EXTENSIONS :\n This is your vector as of now - {self.cpuVector}\n This is your index of attack as of now - {index}")
-        highValue = self.cpuVector[0][index]
-        lowValue = self.cpuVector[0][index]
+        highValue = self.cpuVector[0][oppositeindex]
+        lowValue = self.cpuVector[0][oppositeindex]
         highCell = [0,0]
         lowCell = [0,0]
         for x in range(len(self.cpuVector)):
-            highValue = max(highValue, self.cpuVector[x][index])
-            lowValue = min(lowValue,self.cpuVector[x][index])
-        highCell[oppositeindex] = self.cpuVector[0][oppositeindex]
-        highCell[index] = highValue+1
-        lowCell[oppositeindex] = self.cpuVector[0][oppositeindex]
-        lowCell[index] = lowValue-1
+            highValue = max(highValue, self.cpuVector[x][oppositeindex])
+            lowValue = min(lowValue,self.cpuVector[x][oppositeindex])
+        highCell[index] = self.cpuVector[0][index]
+        highCell[oppositeindex] = highValue+1
+        lowCell[index] = self.cpuVector[0][index] 
+        lowCell[oppositeindex] = lowValue-1
         vectorOptions = [highCell,lowCell] 
         print(f"THESE ARE THE OPTIONS BEING PASSED TO deleteInvalidVectorExtensions - {vectorOptions}")
         validVectorOptions = self.deleteInvalidVectorExtensions(vectorOptions,targetPlayer)
@@ -695,7 +702,7 @@ class Board:
 #   - targetCell - list in the format [r,c]; represents row and column position on game board matrix
     def destroyedBoatStatus(self,targetCell):
         deleteBoatKey = []
-        for boat, positions in self.storeBoatPos.items():
+        for boat, positions in self.storedPositions.items():
             if targetCell in positions:
                 #positions.pop(positions.index(targetCell))
                 self.destroyedBoatPos[boat].append(targetCell)
