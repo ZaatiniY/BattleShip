@@ -13,11 +13,16 @@ class Simulation():
         self.version = 1.0
 
     def printGameHeader(self):
+        gameStartLine = '_'
+        for x in range(150):
+            gameStartLine += '_'
+        print("\n\n\n\n\n\n\n\n\n\n\n\n\n")
+        print(gameStartLine)
         print("----------------------------------------")
         print("|                                      |")
         print("|         WELCOME TO BATTLESHIP        |")
         print("|                                      |")
-        print("----------------------------------------")
+        print("----------------------------------------\n\n")
 
     def printGameInstructions(self):
         print(f"This is Battle Ship version {self.version}")
@@ -26,6 +31,7 @@ class Simulation():
         print("PLEASE NOTE - your selections will need to be in the format - (letter)(number)\n     Example - A0,B5,etc...")
         print("Now let's get started; below, you will see the empty boards. The top will reflect your opponent's, and the bottom view is your board (where your boats will show up after you place them)")
         self.buildUserDisplay(playerTurn = 0)
+        input("\n\nHIT ENTER TO START THE POSITION SELECTION PROCESS")
 
 
     def runBoardBuilding(self):
@@ -41,6 +47,7 @@ class Simulation():
         endBoatPoint = player.specifyBoatOrientation(userCellInput,key,value)
         #print(f"this is the end point being passed to applyBoatPosition {endBoatPoint}")
         player.applyBoatPosition(key,value,userCellInput,endBoatPoint, count = 0)
+        self.buildUserDisplay(playerTurn = 0) #playerTurn can be zero because you know for a fact that this WILL be the non-cpu player
 
 #playerTurn defines the ATTACKING player
 #TO-DO:
@@ -52,22 +59,24 @@ class Simulation():
         while not winCheck: 
             self.buildUserDisplay(playerTurn)
             userSelect = self.chooseAttackMethod(playerTurn)
-            self.processTarg(userSelect,playerTurn)
+            self.selectProcessTargDialog(userSelect,playerTurn) #chooses message prompt to user depending on if it's cpu turn or the player
             playerTurn = self.switchPlayer(playerTurn)
             winCheck = self.checkWinState(playerTurn,boatCount = 0, positionCount=0)
             self.clock += 1 #this is really stupid to have continuously adding just for the first turn to not trigger start message; consider better way of managing
             #print(f"Current state of winCheck - {winCheck}")
-            #if not winCheck:
-                #self.endTurnDisplay(self.switchPlayer(playerTurn))
+            if winCheck is True:
+                self.endTurnDisplay(self.switchPlayer(playerTurn))
     
     #endTurnDisplay just portrays the raw array - useful for testing 
     def endTurnDisplay(self,playerTurn):
-        #print("This is the current state of the OPPOSING player's field (the one that just got SHOT AT)")
-        #print(self.players[self.switchPlayer(playerTurn)].gameBoard)
+        print(f"\n\nTHE GAME HAS BEEN CONCLUDED - player {playerTurn} is the WINNER")
+        print("Thank you for playing!")
+        # print("This is the current state of the OPPOSING player's field (the one that just got SHOT AT)")
+        # print(self.players[self.switchPlayer(playerTurn)].gameBoard)
         pass
 
     def promptPlayerAttack(self,turn):
-        chosenCell = input(f"Player {turn+1} - Select the cell you want to hit. Your selection must be in the format of a '[Letter][Number]'") #The plus 1 here is necessary, as the index for the list is zero and 1; players are 1 and 2
+        chosenCell = input(f"Player {turn+1} - Select the cell you want to hit. Your selection must be in the format of a '[Letter][Number]' - ") #The plus 1 here is necessary, as the index for the list is zero and 1; players are 1 and 2
         if not self.checkTargetInput(chosenCell,turn):
             chosenCell = self.promptPlayerAttack(turn)
         return chosenCell
@@ -85,9 +94,9 @@ class Simulation():
         iChoice = random.randint(0,len(self.cpuAttackChoices)-1)
         choice = self.cpuAttackChoices[iChoice]
         #This should be deleted later - being done to avoid the blind fire sequence at start of game for TESTING
-        if self.clock <= 1:
-            choice = 'C5'
-            iChoice = self.cpuAttackChoices.index('C5')  
+        # if self.clock <= 1:
+        #     choice = 'C5'
+        #     iChoice = self.cpuAttackChoices.index('C5')  
         cellChoice = self.translateUserTarg(choice)
         self.cpuAttackChoices.pop(iChoice) #removing it from further use in the future
         self.addToCPUFollowUps(cellChoice,playerTurn)
@@ -232,7 +241,7 @@ class Simulation():
         if len(attackChoice)>0 and len(finishedBoatPositions)>0:
             print(len(finishedBoatPositions[0]))
             for vectorPosition in finishedBoatPositions:
-                input("You are entering the portion where you're removing the destroyed positions from your vector list")
+                #input("You are entering the portion where you're removing the destroyed positions from your vector list")
                 self.cpuVector.remove(vectorPosition)
                 if self.translateCoordTarg([vectorPosition]) in self.cpuAttackChoices:
                     self.cpuAttackChoices.remove(self.translateCoordTarg([vectorPosition]))
@@ -292,6 +301,13 @@ class Simulation():
                 i += 1
         return i
 
+    def selectProcessTargDialog(self,selectCell,playerTurn):
+        if self.players[playerTurn].cpuOpponent is True:
+            self.cpuProcessTarg(selectCell,playerTurn)
+        else:
+            self.processTarg(selectCell,playerTurn)
+        
+
     def processTarg(self,selectCell,turn): 
         successfulTurn = False #successful turn only counts if a turn doesn't need to be repeated because someone has selected a cell that already has been targeted before
         playerTarg = self.players[self.switchPlayer(turn)]
@@ -301,10 +317,12 @@ class Simulation():
             print("You've missed the target")
             playerTarg.gameBoard[tuple(matrixCell)] = playerTarg.emptySpotHit
             successfulTurn = True
+            input("\nHIT ENTER TO SWITCH TO YOUR OPPONENTS TURN\n")
         elif playerTarg.gameBoard[tuple(matrixCell)] == playerTarg.shipSafe:
             print("You've HIT a target")
             playerTarg.gameBoard[tuple(matrixCell)] = playerTarg.shipHit
             successfulTurn = True
+            input("\nHIT ENTER TO SWITCH TO YOUR OPPONENTS TURN\n")
         elif playerTarg.gameBoard[tuple(matrixCell)] == playerTarg.shipHit:
             print("This is already a spot where you've scored a hit - please try again:")
         elif playerTarg.gameBoard[tuple(matrixCell)] == playerTarg.emptySpotHit:
@@ -313,9 +331,33 @@ class Simulation():
             selectCell = self.promptPlayerAttack(turn)
             self.processTarg(selectCell,turn)
 
+    def cpuProcessTarg(self,selectCell,turn):
+        successfulTurn = False #successful turn only counts if a turn doesn't need to be repeated because someone has selected a cell that already has been targeted before
+        playerTarg = self.players[self.switchPlayer(turn)]
+        #print(f"The player that is getting HIT is Player{self.switchPlayer(turn)+1}")
+        matrixCell = self.translateUserTarg(selectCell) #where target is in format that can be passed to np matrix
+        if playerTarg.gameBoard[tuple(matrixCell)] == playerTarg.emptySpot:
+            print(f"CPU has missed a target - attempted to target {selectCell}")
+            playerTarg.gameBoard[tuple(matrixCell)] = playerTarg.emptySpotHit
+            successfulTurn = True
+            input("\nHIT ENTER TO CONTINUE THE GAME")
+        elif playerTarg.gameBoard[tuple(matrixCell)] == playerTarg.shipSafe:
+            print(f"CPU has missed a target - targeted {selectCell}")
+            playerTarg.gameBoard[tuple(matrixCell)] = playerTarg.shipHit
+            successfulTurn = True
+            input("\nHIT ENTER TO CONTINUE THE GAME")
+        elif playerTarg.gameBoard[tuple(matrixCell)] == playerTarg.shipHit:
+            pass
+        elif playerTarg.gameBoard[tuple(matrixCell)] == playerTarg.emptySpotHit:
+            pass
+        if not successfulTurn:
+            selectCell = self.promptPlayerAttack(turn)
+            self.processTarg(selectCell,turn)
+        
+
 #translateUserTarg takes the input of something in the string format 'X#' and returns a coordinate that can be placed on the numpy gameBoard array tied to a Board object  
     def translateUserTarg(self,uInput):
-        print(uInput)
+        #print(uInput)
         variable = [self.players[0].boardRows.index(uInput[0]),int(uInput[1])]
         return variable
 
@@ -323,7 +365,7 @@ class Simulation():
     def translateCoordTarg(self,input):
         translatedCoords = []
         for x in input:
-            print(input)
+            #print(input)
             rows = self.players[0].boardRows[x[0]]
             columns = self.players[0].boardColumns[x[1]]
             translatedCoords.append(rows+columns)
@@ -366,8 +408,6 @@ class Simulation():
     def playGameTest(self):
         self.printGameHeader()
         self.printGameInstructions()
-        #self.runBoardBuilding()
-        #print(self.players[0].cpuOptions)
         self.runBoardBuilding()
         # print(self.players[0].gameBoard)
         # print(self.players[0].storedPositions)
@@ -404,18 +444,18 @@ class Simulation():
         self.defineTestBoards()
         self.drawTestBoards()
 
-    def testCPUBoardBuilding(self):
-        for key, value in self.players[0].ships.items():
-            self.players[0].cpuBoatPlacing(key,value)
-        print(f"see player one board:\n {self.players[0].gameBoard}")
-        print(self.players[0].storedPositions)
+    # def testCPUBoardBuilding(self):
+    #     for key, value in self.players[0].ships.items():
+    #         self.players[0].cpuBoatPlacing(key,value)
+    #     print(f"see player one board:\n {self.players[0].gameBoard}")
+    #     print(self.players[0].storedPositions)
         #print(f"see player two board:\n {self.players[1].gameBoard}")
 
     def buildUserDisplay(self,playerTurn):
         if self.players[playerTurn].cpuOpponent is not True:
             columns = self.drawColumnHeader(playerTurn)
             divider = self.drawColumnDivider(columns)   
-            print("Your view of opponenet:")
+            print("\n\n\n\nYour view of opponenet:")
             print(columns)
             print(divider)
             self.drawingTargetPlayerBoard(playerTurn)
@@ -445,8 +485,10 @@ class Simulation():
         for rows in range(len(self.players[0].boardRows)):
             rowToPrint = " " + self.players[0].boardRows[rows] + " | "
             for col in range(len(self.players[0].boardColumns)):
-                if currentPlayerBoard[rows][col] == 0 or currentPlayerBoard[rows][col] == 3:
+                if currentPlayerBoard[rows][col] == 0:
                     addValue = "O"
+                elif currentPlayerBoard[rows][col] == 3: 
+                    addValue = "-"
                 elif currentPlayerBoard[rows][col] == 1: 
                     addValue = "S"
                 elif currentPlayerBoard[rows][col] == 2:
@@ -519,9 +561,9 @@ class Board:
 #       returns-> boatStartPoint; string of starting cell for boat position
 #       Futur fixes: make is so that spaces in input can get interpretted correctly
     def userBoatPosPrompt(self,boat,boatLength):
-        print("Please select location for boat placement (must be in format XY\n -where X is letter A-J\n -where Y is number 0-9")
+        print("Please select location for boat placement (must be in format XY\n -where X is letter A-J\n -where Y is number 0-9 - ")
         print("You will be guided to set direction of your boat - this will mean that all positions for the current boat will be in the direction you selected")
-        boatStartPoint = str(input(f"Starting cell for {boat} (boat length {boatLength})")).upper()
+        boatStartPoint = str(input(f"Starting cell for {boat} (boat length {boatLength}) - ")).upper()
         if not self.checkBoatPositionInput(boatStartPoint):
             boatStartPoint = self.userBoatPosPrompt(boat,boatLength)
         return boatStartPoint
@@ -545,6 +587,22 @@ class Board:
         else:
             continueSelection = True 
         return continueSelection
+    
+    def checkBoatPositionInput(self,uInput):
+        inputCheck = list(uInput.upper())
+        continueSelection = False
+        print(inputCheck[0])
+        if len(inputCheck) != 2:
+            print("your input isn't in the correct 2 digit format, please try again")
+        else:
+            if inputCheck[0] not in self.boardRows:
+                print("Your first digit is not in the proper letter format for cell rows; please try again")
+            elif inputCheck[1] not in self.boardColumns:
+                print("your second digit reprsenting your column selection was incorrect; please try again")
+            else:
+                continueSelection = True
+        return continueSelection
+
 
 #translateUserCell takes User Input and returns it as a tuple of (X,Y) coordinates
     def translateUserCell(self,uInput):
@@ -561,7 +619,7 @@ class Board:
         #print("Select the direction you will place your boat (if the boat is found to go over the edge of the board, you will be asked to redo the input)")
         orientationSelect = self.promptOrientationSelect(selectedCell)
         #print(f"\n\n This is your check to see why your option isn't being selected:\n user input {orientationSelect}\n type {type(orientationSelect)}\n \n \n") #testing user orientation input
-        print(f"This is the user input for orientation that's going into the checkValidPosition Input AND checkBoatOrientation ===> {orientationSelect}")
+        #print(f"This is the user input for orientation that's going into the checkValidPosition Input AND checkBoatOrientation ===> {orientationSelect}")
         if orientationSelect == '5':
             print("Please make your new selection for the starting point of your boat")
             selectedCell = self.userBoatPosPrompt(boat,boatLength)
@@ -597,7 +655,7 @@ class Board:
             if x < 0 or x > len(self.gameBoard)-1:
                 redoInput = True
         if redoInput:
-            print("It seems like the orientation you tried to specify for your boat is not valid as it doesn't lie in the playing field; \n"
+            print("\nIt seems like the orientation you tried to specify for your boat is not valid as it doesn't lie in the playing field; \n"
             "please try again or consider selecting a new starting position for your boat")
             PosFinal = self.specifyBoatOrientation(selectedCell,boat,boatLength)  
         return PosFinal
@@ -666,20 +724,21 @@ class Board:
         return intersectState
 
     def intersectMessage(self):
-        print("It seems like you've placed a boat such that it overlaps with an existing boat on the board; please start again and try picking a new position for this current boat:")
+        print("\nIt seems like you've placed a boat such that it overlaps with an existing boat on the board; please start again and try picking a new position for this current boat:")
     
     def storeBoatPos(self,boat,finalBoatCoords):
         self.storedPositions[boat] = finalBoatCoords
 
 #cpuBoatPlacing will assigned the used cells to consumedCells list 
     def cpuBoatPlacing(self,boat,boatLength):
-        print("\n\nThe CPU Opponent will now select their board layout:")
-        print(f"Boat - {boat}; boat length - {boatLength}")
-        print(f"This is what the cpu has used at the start of this boat {self.cpuUsedCells}")
+        #print("The cpu is selecting their boat position - please hold for a few seconds\n")
+        # print("\n\nThe CPU Opponent will now select their board layout:")
+        # print(f"Boat - {boat}; boat length - {boatLength}")
+        # print(f"This is what the cpu has used at the start of this boat {self.cpuUsedCells}")
         placingBoat = True
         while placingBoat:
-            print("stuck in cbp")
-            time.sleep(1)
+            #print("stuck in cbp")
+            #time.sleep(1)
             selectCell = self.cpuOptions[random.randint(0,(len(self.cpuOptions)-1))]
             finalCell = self.cpuBoatOrientation(selectCell,boat,boatLength)
             placingBoat = self.applyCPUBoats(boat,boatLength,selectCell,finalCell,placingBoat, count = 0)
@@ -700,8 +759,8 @@ class Board:
 
     def calCPUPosFinal(self,selectedCell,boatLength,cpuOrientation):
         adjBoatPos = self.translateUserCell(selectedCell)
-        print(adjBoatPos)
-        print(cpuOrientation)
+        # print(adjBoatPos)
+        # print(cpuOrientation)
         return [self.orientationOptions[cpuOrientation][0]*(boatLength-1)+adjBoatPos[0],self.orientationOptions[cpuOrientation][1]*(boatLength-1)+adjBoatPos[1]]
 
     def checkCPUOrientation(self,PosFinalTest):
@@ -716,7 +775,7 @@ class Board:
         if adjBoatPos[count] != endCell[count]:
             boardCoord = [x for x in adjBoatPos] 
             allBoatCoords = self.getBoatCoords(boardCoord,adjBoatPos,endCell,count)
-            print(f"This is all the potential boat coordinates being assessed for placement (determined in applyCPUBoats): {allBoatCoords}")
+            #print(f"This is all the potential boat coordinates being assessed for placement (determined in applyCPUBoats): {allBoatCoords}")
             runIntersectCheck = self.cpuIntersectPass(allBoatCoords)
             if runIntersectCheck:
                 for x in allBoatCoords:
@@ -725,7 +784,8 @@ class Board:
                 placingBoatCheck = False
                 self.addCPUList(allBoatCoords)
             else:
-                print("cpu tried placing cell on existing boat; the cpu will be forced to select again")
+                pass
+                #print("cpu tried placing cell on existing boat; the cpu will be forced to select again")
         else:
             count += 1 
             placingBoatCheck = self.applyCPUBoats(boat,boatLength,uCell,endCell,placingBoatCheck,count)
@@ -736,14 +796,14 @@ class Board:
             self.cpuUsedCells.append(x)
 
     def cpuIntersectPass(self,potentialSpots):
-        print(f"This is all the potential boat coordinates being assessed for placement (passed to checkIntersectPass): {potentialSpots}")
+        #print(f"This is all the potential boat coordinates being assessed for placement (passed to checkIntersectPass): {potentialSpots}")
         validPlacement = True
         count = 0
         while validPlacement and count<len(potentialSpots):
             if potentialSpots[count] in self.cpuUsedCells:
                 validPlacement = False
             count +=1 
-        print(f"This is the boolean being returned by cpuIntersectPass - {validPlacement}")
+        #print(f"This is the boolean being returned by cpuIntersectPass - {validPlacement}")
         return validPlacement
     
 #destroyedBoatStatus will return a list, where if a boat was destroyed by selection of "targetCell", the list will contain boat name that was destroyed
