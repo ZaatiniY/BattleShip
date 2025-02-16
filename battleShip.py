@@ -40,6 +40,7 @@ class Simulation():
             playerTurn = self.switchPlayer(playerTurn)
             winCheck = self.checkWinState(playerTurn,boatCount = 0, positionCount=0)
             self.clock += 1 #this is really stupid to have continuously adding just for the first turn to not trigger start message; consider better way of managing
+            print(f"Current state of winCheck - {winCheck}")
             if not winCheck:
                 self.endTurnDisplay(self.switchPlayer(playerTurn))
     
@@ -73,7 +74,7 @@ class Simulation():
             iChoice = self.cpuAttackChoices.index('C5')  
         cellChoice = self.translateUserTarg(choice)
         self.cpuAttackChoices.pop(iChoice) #removing it from further use in the future
-        self.addToCPUFollowUps(cellChoice,playerTurn) 
+        self.addToCPUFollowUps(cellChoice,playerTurn)
         return cellChoice 
 
 # Don't think this code was necessary -> scratched it out while testing
@@ -86,15 +87,23 @@ class Simulation():
     #         pass
 
     def cpuAttackTree(self,playerTurn):
-        attackChoice = [] 
+        targetPlayer = self.switchPlayer(playerTurn)
+        attackChoice = []
+        self.testingStartofAttackTree(attackChoice) 
         while len(attackChoice) < 1:
             if len(self.cpuFollowup) == 0:#option correleating with the cpu having no prior knowledge 
                 print("Currently trying a BLIND ATTACK")
                 attackChoice.append(self.blindAttackSequence(playerTurn))
+                destroyedBoatKey = self.players[targetPlayer].destroyedBoatStatus(attackChoice[0])
+                if len(destroyedBoatKey) > 0: 
+                    self.players[targetPlayer].destroyedBoatPos[destroyedBoatKey[0]] 
+
             elif len(self.cpuVector) == 0: #picking a random option from followUp
                 print("Currently Trying FOLLOW Attack")
                 self.cpuFollowUpSeq(attackChoice,playerTurn)
-                
+                destroyedBoatKey = self.players[targetPlayer].destroyedBoatStatus(attackChoice[0])
+                if len(destroyedBoatKey) > 0: 
+                    self.players[targetPlayer].destroyedBoatPos[destroyedBoatKey[0]]
             else:
                 print("Currently Trying a VECTOR attack")
                 self.vectorBasedAttack(attackChoice,playerTurn)
@@ -105,7 +114,11 @@ class Simulation():
     
     def testingEndofVectorAttack(self,attackChoice):
         print(f"You are about to exit vectorBasedAttack portion of your tree\n attack choice - {attackChoice}  \n current state of vector - {self.cpuVector} n\current state of followUp - {self.cpuFollowup} ")
-        input("Hit Enter when readdy to progress")
+        input("Hit Enter when ready to progress")
+
+    def testingStartofAttackTree(self,attackChoice):
+        print(f"You are about to enter the beginning of attack tree\n attack choice - {attackChoice}  \n current state of vector - {self.cpuVector} n\current state of followUp - {self.cpuFollowup} ")
+        input("Hit Enter when ready to progress")
 
     def cpuFollowUpSeq(self,attackChoice,playerTurn):
         print("\nThis is you Enterinng the cpuFollowUpSeq")
@@ -188,12 +201,9 @@ class Simulation():
     def vectorBasedAttack(self,attackChoice,playerTurn):
         oppositePlayer = self.switchPlayer(playerTurn)
         self.nextVectorShot(attackChoice,oppositePlayer)
-        #I'm removing the part about stopping an attack on a line after an enemy boat has been destroyed
-        #   the code below commented out is an artificat of that
-        #if len(attackChoice)<1 or self.players[oppositePlayer].destroyedBoatStatus(attackChoice) is True:
         positionsDeletingFromVector = []
         if len(attackChoice)>0:
-            positionsDeletingFromVector.append(self.getObsoleteVectorPos(attackChoice[0],oppositePlayer))
+            positionsDeletingFromVector = (self.getObsoleteVectorPos(attackChoice[0],oppositePlayer))
         self.closeVectorTargs(attackChoice,oppositePlayer,positionsDeletingFromVector)
 
 #getObsoleteVectorPos will call the Board's object function destroyedBoatStatus; which will add target cell to dict of hit boat positions as an instance variable
@@ -202,7 +212,7 @@ class Simulation():
         usedPositions = []
         destroyedBoatKey = self.players[targetPlayer].destroyedBoatStatus(targetCell)
         if len(destroyedBoatKey) > 0:
-            usedPositions.append(self.players[targetPlayer].destroyedBoatPos[destroyedBoatKey[0]]) 
+            usedPositions = (self.players[targetPlayer].destroyedBoatPos[destroyedBoatKey[0]]) 
         return usedPositions
 
 
@@ -210,45 +220,25 @@ class Simulation():
 #FUTURE WORK:
 #   Consider a way to make less stupid
     def closeVectorTargs(self,attackChoice,targetPlayer,finishedBoatPositions):
-        input(f"You have entered closeVectorTargs - this is currently your vector {self.cpuVector}.\n This is currently your attack choice - {attackChoice[0]} \nHIT ENTER WHEN YOURE READY TO CONTINUE")
-        if len(attackChoice)>0 and len(finishedBoatPositions[0])>0:
-            print(len(finishedBoatPositions))
-            input(f"This is your finishedBoatPositions; it should be empty - {finishedBoatPositions}\n HIT ENTER WHEN READY TO CONTINUE")
+        #input(f"You have entered closeVectorTargs - this is currently your vector {self.cpuVector}.\n This is currently your attack choice - {attackChoice[0]} \nHIT ENTER WHEN YOURE READY TO CONTINUE")
+        #input(f"This is your finishedBoatPositions; it should be empty - {finishedBoatPositions}\n HIT ENTER WHEN READY TO CONTINUE")
+        if len(attackChoice)>0 and len(finishedBoatPositions)>0:
+            print(len(finishedBoatPositions[0]))
             for vectorPosition in finishedBoatPositions:
+                input("You are entering the portion where you're removing the destroyed positions from your vector list")
                 self.cpuVector.remove(vectorPosition)
-                self.cpuAttackChoices.remove(self.translateCoordTarg(attackChoice[0]))
+                if self.translateCoordTarg([vectorPosition]) in self.cpuAttackChoices:
+                    self.cpuAttackChoices.remove(self.translateCoordTarg([vectorPosition]))
                 if vectorPosition in self.cpuFollowup:
                     self.cpuFollowup.remove(vectorPosition)
         elif len(attackChoice) < 1:
             for vectorPosition in self.cpuVector[:]:
                 self.cpuVector.remove(vectorPosition)
-                if vectorPosition in self.cpuFollowup:
-                    self.cpuFollowup.remove(vectorPosition)
-
-
-                
-
-
-                    
-
-                
-                    
-                
-
-
-#This is old iteration of closeVectorTargs - new one will utilize values passed from getObsoleteVectorPos
-    # def closeVectorTargs(self,attackChoice):
-    #     print("YOU ARE NOW IN closeVectorTarg")
-    #     cleanList = []
-    #     for x in self.cpuVector:
-    #         if x not in self.cpuFollowup: 
-    #             cleanList.append(x)
-    #         if x in self.cpuFollowup:
-    #             self.cpuFollowup.pop(self.cpuFollowup.index(x))
-    #             tempUserFormat = self.translateCoordTarg()
-    #             self.cpuAttackChoices.pop(self.cpuAttackChoices.index(tempUserFormat))
-    #     self.cpuVector = []
-            
+                if vectorPosition not in self.cpuFollowup: #this is adding the vector elements to follow-up
+                    self.cpuFollowup.append(vectorPosition)
+                if self.translateCoordTarg([vectorPosition]) in self.cpuAttackChoices:
+                    self.cpuAttackChoices.remove(self.translateCoordTarg([vectorPosition]))                
+        input(f"This is the end of you closing your first vector target; current state of vector - {self.cpuVector}")
 
 #this way of assigning the vector extension is UNBELIVABLY headass - like make a loop bro
 #Notes - vectorOptions is going to return the ends of the current attack vector through which the cpu is searching 
@@ -328,6 +318,7 @@ class Simulation():
     def translateCoordTarg(self,input):
         translatedCoords = []
         for x in input:
+            print(input)
             rows = self.players[0].boardRows[x[0]]
             columns = self.players[0].boardColumns[x[1]]
             translatedCoords.append(rows+columns)
@@ -347,18 +338,28 @@ class Simulation():
         return continueSelection
 
 #this can be optimizaed to stop after it finds a single surviving boat cell
+    # def checkWinState(self,turn,boatCount,positionCount):
+    #     targetPlayer = self.switchPlayer(turn) 
+    #     win = True 
+    #     boatItems = iter(self.players[targetPlayer].storedPositions.items())
+    #     while boatCount < len(self.players[targetPlayer].storedPositions) and win ==True:
+    #         key,currBoatPos = next(boatItems)
+    #         while positionCount < len(currBoatPos) and win == True:
+    #             if self.players[turn].gameBoard[tuple(currBoatPos[positionCount])] == self.players[turn].shipSafe:
+    #                 win = False
+    #             # else: #This else portion is added to just track how the function is running; should be removed after game is finalized/tested
+    #             #     print("Game has not been won by current player - play will continue") 
+    #             positionCount += 1
+    #         boatCount +=1
+    #     return win
+
     def checkWinState(self,turn,boatCount,positionCount):
+        targetPlayer = self.switchPlayer(turn) 
         win = True 
-        boatItems = iter(self.players[turn].storedPositions.items())
-        while boatCount < len(self.players[turn].storedPositions) and win ==True:
-            key,currBoatPos = next(boatItems)
-            while positionCount < len(currBoatPos) and win == True:
-                if self.players[turn].gameBoard[tuple(currBoatPos[positionCount])] == self.players[turn].shipSafe:
-                    win = False
-                # else: #This else portion is added to just track how the function is running; should be removed after game is finalized/tested
-                #     print("Game has not been won by current player - play will continue") 
-                positionCount += 1
-            boatCount +=1
+        boatItems = iter(self.players[targetPlayer].storedPositions.items())
+        for boat,positions in self.players[targetPlayer].storedPositions.items():
+            if sorted(self.players[targetPlayer].destroyedBoatPos[boat]) != sorted(positions):
+                win = False
         return win
     
     def informGameEnd(gameCheck,turn):
@@ -418,6 +419,30 @@ class Simulation():
         print(self.players[0].storedPositions)
         #print(f"see player two board:\n {self.players[1].gameBoard}")
 
+    
+
+    def buildUserDisplay(self,playerTurn):
+        targetPlayer = self.swtichPlayer(playerTurn)
+        columns = self.drawColumnHeader(playerTurn)
+        print(columns)
+        print(self.drawColumnDivider(columns))
+        
+        pass
+
+    
+
+    def drawColumnHeader(self,playerTurn):
+        columnHeader = "   |  "
+        for col in self.players[0].boardColumns:
+            extension = col + "  "
+            columnHeader += extension
+            return columnHeader
+    
+    def drawColumnDivider(self,columnHeader):
+        divider = "_"
+        for unit in range(len(columnHeader)):
+            divider += "_"
+        return divider 
     
 
 class Board:
@@ -701,16 +726,18 @@ class Board:
 # parameters:
 #   - targetCell - list in the format [r,c]; represents row and column position on game board matrix
     def destroyedBoatStatus(self,targetCell):
+        print(f"You have entered destroyedBoatStatus - this is the target cell being evaluated")
+        input(f"This is the current status of your destroyed boats in the Board object {self.destroyedBoatPos}")
         deleteBoatKey = []
         for boat, positions in self.storedPositions.items():
             if targetCell in positions:
-                #positions.pop(positions.index(targetCell))
                 self.destroyedBoatPos[boat].append(targetCell)
-                if self.destroyedBoatPos[boat] == positions:
+                input(f"YOU HAVE ADDED A POSITION TO THE HIT DESTROYED BOAT POS - this is your destroyedBoatPos: {self.destroyedBoatPos}")
+                if sorted(self.destroyedBoatPos[boat]) == sorted(positions): #just recently added sorted() to this line, not sure if it'll work
                     deleteBoatKey.append(boat)
         if len(deleteBoatKey)>0:
             self.destroyedBoatMes(deleteBoatKey[0])
-            self.storeBoatPos.pop(deleteBoatKey[0])
+        #     self.storeBoatPos.pop(deleteBoatKey[0]) Cant figure out why this line of code is here
         return deleteBoatKey
 
     def destroyedBoatMes(self,boat):
